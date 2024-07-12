@@ -43,8 +43,6 @@ keys = sorted(dataframes.keys())
 split1 = len(keys) // 3
 split2 = 2 * len(keys) // 3
 
-
-
 # Create a Dash application
 app = Dash(__name__)
 
@@ -59,7 +57,6 @@ app.layout = html.Div([
     ),
     dcc.Graph(id='line-chart'),
     html.Div([
-        # html.Label("Select Variables:", style={'fontSize': '17px', 'textAlign': 'center'}),
         html.Div([
             dcc.Checklist(
                 id='variable-checklist-1',
@@ -82,6 +79,7 @@ app.layout = html.Div([
         ], style={'display': 'flex', 'justifyContent': 'center'}),
     ], style={'margin': '20px'}),
 ])
+
 # Define the callback to update the line chart
 @app.callback(
     Output('line-chart', 'figure'),
@@ -120,4 +118,5 @@ def update_line_chart(selected_variables_1, selected_variables_2, selected_varia
 
 # Run the Dash application
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    port = int(os.environ.get('PORT', 8050))
+    app.run_server(debug=True, host='0.0.0.0', port=port)

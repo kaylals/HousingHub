@@ -23,13 +23,16 @@ test_size = 0.2
 
 # Create features and target
 data = create_lagged_features(time_series_data, n_lags)
-X = data.drop(['date', 'value'], axis=1)
-y = data['value']
+X = data.drop(['date', 'value'], axis=1).values
+y = data['value'].values
 
 # Train-test split
-split_index = int(len(data) * (1 - test_size))
-X_train, X_test = X[:split_index], X[split_index:]
-y_train, y_test = y[:split_index], y[split_index:]
+# split_index = int(len(data) * (1 - test_size))
+# X_train, X_test = X[:split_index], X[split_index:]
+# y_train, y_test = y[:split_index], y[split_index:]
+
+X_train,X_test,y_train,y_test=train_test_split(X,y,test_size=0.3,random_state=0)
+
 
 # Train the Random Forest model
 model = RandomForestRegressor(n_estimators=100, random_state=0)
@@ -45,7 +48,7 @@ print(f'Mean Squared Error: {mse}')
 # Forecast future values
 # Let's say we want to forecast the next 10 steps
 n_forecast = 10
-last_observations = list(X.iloc[-1, :].values)
+last_observations = list(X[-1, :])
 
 future_forecasts = []
 for _ in range(n_forecast):

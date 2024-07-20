@@ -26,17 +26,20 @@ def clean_and_parse_text(text):
             continue
         
         # Extract relevant data, assuming each relevant line has a date at the beginning
-        if line and line[0].isdigit():
+        if line:
             # Split the line into columns
             columns = line.split()
             
+            # drop # id
+            if len(columns[0]) < 8:
+                columns = columns[1:]
             # Initialize an empty list to store the processed columns
             processed_columns = []
             
             # Process the columns
             i = 0
             while i < len(columns):
-                if i == 4:  # Address starts at index 4
+                if i == 3:  # Address starts at index 3
                     # Combine address parts until we reach AreaCity
                     address_parts = []
                     while i < len(columns) and not columns[i].endswith('700Seattle'):
@@ -71,7 +74,7 @@ def process_pdf(pdf_path, csv_path):
 
     # Define column names
     column_names = [
-        "#", "MLS", "Stat", "Type", "Address", "AreaCity", "State", 
+        "MLS", "Stat", "Type", "Address", "AreaCity", "State", 
         "List/Sell $", "CDOMBds", "Bths", "SF", "Stat Date"
     ]
 
@@ -108,8 +111,6 @@ def process_pdf(pdf_path, csv_path):
 
     # Save the updated dataframe back to the CSV file
     df.to_csv(csv_path, index=False)
-
-    print(f'Processed and saved: {csv_path}')
 
 # Process all PDF files in the input directory
 for filename in os.listdir(input_dir):

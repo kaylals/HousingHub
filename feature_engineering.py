@@ -9,13 +9,19 @@ import sys
 # environment variables
 input_dir = 'data/individual_level/processed/encoded_700.csv'      # test: 'data/individual_level/test/encoded_700_test.csv'
 output_dir =  'data/mixed_level/feature_engineer_700.csv'    # test:  'data/individual_level/test/features_test.csv' 
-
+input_dir_aggre = 'data/aggregated_700.csv'
 # Load encoded transactional data and aggregated data
 df = pd.read_csv(input_dir)
-agg_df = pd.read_csv('data/aggregated_700.csv')
+agg_df = pd.read_csv(input_dir_aggre)
 
-df['Stat Date'] = pd.to_datetime(df['Stat Date'])
-agg_df['Date'] = pd.to_datetime(agg_df['Date'])
+
+df['Stat Date'] = pd.to_datetime(df['Stat Date'], errors='coerce')
+agg_df['Date'] = pd.to_datetime(agg_df['Date'], errors='coerce')
+
+agg_df_cleaned = agg_df.dropna(subset=['Date'])
+agg_df['Year'] = agg_df['Date'].dt.year
+agg_df['Month'] = agg_df['Date'].dt.month
+agg_df['Day'] = agg_df['Date'].dt.day
 
 # Drop observations earlier than '2006-01-01'
 cutoff_date = pd.Timestamp(agg_df['Date'].min())
@@ -28,8 +34,8 @@ for col in columns_to_convert:
 # Function to match transaction date with aggregated data
 def match_date(date):
     matched = agg_df[
-        (agg_df['Date'].dt.month == date.month) & 
-        (agg_df['Date'].dt.year == date.year)
+        (agg_df['Year'] == date.year) & 
+        (agg_df['Month'] == date.month)
     ]
     if matched.empty:
         return pd.Series({col: np.nan for col in agg_columns})
@@ -55,11 +61,15 @@ if 'List/Sell $' in df.columns and 'SF' in df.columns:
 # Total rooms and bathrooms to bedrooms ratio
 if 'Bths' in df.columns and 'Bds' in df.columns:
     df['Total_Rooms'] = df['Bds'] + df['Bths']
-    df['Bths_Bds_Ratio'] = df['Bths'] / df['Bds']
+    df['Bths_Bds_Ratio'] = np.where(df['Bds'] == 0, 
+                                df['Bths'], 
+                                df['Bths'] / df['Bds'])
 
 # Price per bedroom
 if 'List/Sell $' in df.columns and 'Bds' in df.columns:
-    df['Price_per_Bedroom'] = df['List/Sell $'] / df['Bds']
+    df['Price_per_Bedroom'] = np.where(df['Bds'] == 0, 
+                                   df['List/Sell $'], 
+                                   df['List/Sell $'] / df['Bds'])
 
 # Binning the house size
 if 'SF' in df.columns:
@@ -74,11 +84,6 @@ new_cat_vars = ['Size Category']
 # Log transformation of price
 if 'List/Sell $' in df.columns:
     df['Log Price'] = np.log(df['List/Sell $'])
-
-# Add relative features
-df['Relative_Price_to_Avg'] = df['List/Sell $'] / df['Agg_Average Sales Price']
-df['Relative_DOM_to_Avg'] = df['CDOM'] / df['Agg_Average Days on Market']
-df['Relative_Price_per_SF_to_Avg'] = df['Price_Per_SF'] / df['Agg_Average Price Per Square Foot']
 
 # 2. Handle missing values
 # Identify numeric and non-numeric columns
@@ -125,6 +130,21 @@ df_imputed = pd.concat([df_numeric_imputed, df_non_numeric_imputed], axis=1)
 # Ensure the column order matches the original dataframe
 df_imputed = df_imputed[df.columns]
 
+# After imputation
+print("NaN values after initial imputation:")
+print(df_imputed.isna().sum())
+
+# Additional imputation for specific columns
+df_imputed['CDOM'] = df_imputed['CDOM'].fillna(df_imputed['CDOM'].median())
+
+# Re-calculate relative features
+df_imputed['Relative_Price_to_Avg'] = df_imputed['List/Sell $'] / df_imputed['Agg_Average Sales Price']
+df_imputed['Relative_DOM_to_Avg'] = df_imputed['CDOM'] / df_imputed['Agg_Average Days on Market']
+df_imputed['Relative_Price_per_SF_to_Avg'] = df_imputed['Price_Per_SF'] / df_imputed['Agg_Average Price Per Square Foot']
+
+# Final check
+print("NaN values after additional processing:")
+print(df_imputed.isna().sum())
 
 
 # 3. Convert date features
@@ -174,6 +194,21 @@ df_final = pd.concat([df, encoded_df], axis=1)
 df_final = df_final.drop(columns=new_cat_vars)
 
 print("Shape of df_final:", df_final.shape)
+
+# Count all recordings (rows) in the DataFrame
+total_recordings = len(df_final)
+
+# Alternative method using shape
+# total_recordings = df.shape[0]
+
+print(f"Total number of recordings: {total_recordings}")
+
+# Check for None (NaN) values in each column
+null_count_per_column = df_final.isnull().sum()
+
+# Filter to only columns with NaN values and display them
+columns_with_nulls = null_count_per_column[null_count_per_column > 0]
+print(columns_with_nulls)
 
 
 # # 7. Feature selection (example using correlation)

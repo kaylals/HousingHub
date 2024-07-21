@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # environment variables
 categorical_columns = ['Type', 'Stat']
 input_dir = 'data/individual_level/raw_csv_700'
-output_dir = 'data/individual_level/processed/encoded_700.csv'
+output_dir = 'data/individual_level/processed/700_encoded.csv'
 files = [os.path.join(input_dir, file) for file in os.listdir(input_dir) if file.endswith('.csv')]
 dfs = [pd.read_csv(file) for file in files]
 combined_df = pd.concat(dfs, ignore_index=True)

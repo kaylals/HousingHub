@@ -1,56 +1,75 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
-import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 
 # Convert to pandas DataFrame for easier manipulation
-df = pd.read_csv('data/mixed_level/feature_engineer_700.csv')
+data = pd.read_csv('data/mixed_level/700_feature_engineer.csv')
 
-# Normalize the data
+df = data[['SF', 'Agg_Homes for Sale', 'List/Sell $']]
+
+# Normalize the dataset
 scaler = MinMaxScaler()
-data_scaled = scaler.fit_transform(df)
+scaled_data = scaler.fit_transform(df)
 
-# Create sequences
+# Convert to a DataFrame
+scaled_df = pd.DataFrame(scaled_data, columns=df.columns)
+
+# Define function to create sequences
 def create_sequences(data, seq_length):
-    xs, ys = [], []
-    for i in range(len(data) - seq_length):
-        x = data[i:(i + seq_length), :]
-        y = data[i + seq_length, :]
+    xs = []
+    ys = []
+    for i in range(len(data)-seq_length):
+        x = data[i:i+seq_length]
+        y = data[i+seq_length][-1]  # Assuming target is the last column
         xs.append(x)
         ys.append(y)
     return np.array(xs), np.array(ys)
 
-SEQ_LENGTH = 10  # Length of the sequences
-X, y = create_sequences(data_scaled, SEQ_LENGTH)
+# Parameters
+SEQ_LENGTH = 10
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+# Create sequences
+X, y = create_sequences(scaled_df.values, SEQ_LENGTH)
 
+# Split into train and test sets
+SPLIT = int(0.8 * len(X))
+X_train, X_test = X[:SPLIT], X[SPLIT:]
+y_train, y_test = y[:SPLIT], y[SPLIT:]
+
+# Build the LSTM model
 model = Sequential()
-model.add(LSTM(64, activation='relu', input_shape=(SEQ_LENGTH, X_train.shape[2])))
-model.add(Dense(X_train.shape[2]))  # Output layer should match the number of features
+model.add(LSTM(50, return_sequences=True, input_shape=(SEQ_LENGTH, X_train.shape[2])))
+model.add(Dropout(0.2))
+model.add(LSTM(50, return_sequences=False))
+model.add(Dropout(0.2))
+model.add(Dense(25))
+model.add(Dense(1))
 
-model.compile(optimizer='adam', loss='mse')
+# Compile the model
+model.compile(optimizer='adam', loss='mean_squared_error')
 
-history = model.fit(X_train, y_train, epochs=20, batch_size=16, validation_split=0.2)
+# Train the model
+history = model.fit(X_train, y_train, epochs=20, batch_size=32, validation_split=0.2)
 
+# Evaluate the model
 loss = model.evaluate(X_test, y_test)
 print(f'Test Loss: {loss}')
 
 # Make predictions
-y_pred = model.predict(X_test)
+predictions = model.predict(X_test)
 
-# Inverse transform the predictions and actual values
-y_test_scaled = scaler.inverse_transform(y_test)
-y_pred_scaled = scaler.inverse_transform(y_pred)
+# Inverse transform predictions to original scale
+predictions = scaler.inverse_transform(np.concatenate([X_test[:, -1, :-1], predictions], axis=1))[:, -1]
 
-import matplotlib.pyplot as plt
+# Inverse transform actual values to original scale
+y_test_orig = scaler.inverse_transform(np.concatenate([X_test[:, -1, :-1], y_test.reshape(-1, 1)], axis=1))[:, -1]
 
-plt.figure(figsize=(12, 6))
-plt.plot(y_test_scaled[:, 0], label='Actual Feature 1')
-plt.plot(y_pred_scaled[:, 0], label='Predicted Feature 1')
+# Plot results
+plt.figure(figsize=(14, 5))
+plt.plot(y_test_orig, color='blue', label='Actual')
+plt.plot(predictions, color='red', label='Predicted')
 plt.legend()
 plt.show()

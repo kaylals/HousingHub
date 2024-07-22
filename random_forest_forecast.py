@@ -1,59 +1,45 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
 
 # Create a sample time series data as a DataFrame
-dates = pd.read_csv('combined_df_normalized.csv')['Date']
-time_series_values = pd.read_csv('combined_df_normalized.csv')['Average Sales Price']
-time_series_data = pd.DataFrame({'date': dates, 'value': time_series_values})
+data = pd.read_csv('data/mixed_level/700_feature_engineer.csv')
+features = ['SF', 'Agg_Homes for Sale']
+target = ['List/Sell $']
 
-# Create lagged features
-def create_lagged_features(df, lags):
-    df = df.copy()
-    for lag in range(1, lags + 1):
-        df[f'lag_{lag}'] = df['value'].shift(lag)
-    df.dropna(inplace=True)
-    return df
+X = data[features].values
+Y = data[target].values
 
-# Parameters
-n_lags = 12
-test_size = 0.2
+# Split data into training and testing sets
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
-# Create features and target
-data = create_lagged_features(time_series_data, n_lags)
-X = data.drop(['date', 'value'], axis=1).values
-y = data['value'].values
-
-# Train-test split
-# split_index = int(len(data) * (1 - test_size))
-# X_train, X_test = X[:split_index], X[split_index:]
-# y_train, y_test = y[:split_index], y[split_index:]
-
-X_train,X_test,y_train,y_test=train_test_split(X,y,test_size=0.3,random_state=0)
-
-
-# Train the Random Forest model
-model = RandomForestRegressor(n_estimators=100, random_state=0)
-model.fit(X_train, y_train)
+# Train a separate RandomForestRegressor for each target variable
+models = []
+for i in range(Y_train.shape[1]):
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    model.fit(X_train, Y_train[:, i])
+    models.append(model)
 
 # Make predictions
-y_pred = model.predict(X_test)
+Y_pred = np.zeros(Y_test.shape)
+for i, model in enumerate(models):
+    Y_pred[:, i] = model.predict(X_test)
 
 # Evaluate the model
-mse = mean_squared_error(y_test, y_pred)
-print(f'Mean Squared Error: {mse}')
+for i in range(Y_test.shape[1]):
+    mse = mean_squared_error(Y_test[:, i], Y_pred[:, i])
+    print(f'MSE for target {i+1}: {mse}')
 
-# Forecast future values
-# Let's say we want to forecast the next 10 steps
-n_forecast = 10
-last_observations = list(X[-1, :])
-
-future_forecasts = []
-for _ in range(n_forecast):
-    forecast = model.predict(np.array(last_observations).reshape(1, -1))[0]
-    future_forecasts.append(forecast)
-    last_observations = last_observations[1:] + [forecast]
-
-print(f'Future forecasts: {future_forecasts}')
+# Plotting predicted vs actual values
+for i in range(Y_test.shape[1]):
+    plt.figure(figsize=(10, 5))
+    plt.plot(Y_test[:, i], label='Actual')
+    plt.plot(Y_pred[:, i], label='Predicted')
+    plt.title(f'Target {i+1}: Actual vs Predicted')
+    plt.xlabel('Samples')
+    plt.ylabel('Values')
+    plt.legend()
+    plt.show()

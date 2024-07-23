@@ -1,9 +1,14 @@
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
+
+# Create a new directory to save the figures
+output_dir = 'random_forest_forecast_result'
+os.makedirs(output_dir, exist_ok=True)
 
 # Create a sample time series data as a DataFrame
 data = pd.read_csv('data/mixed_level/700_feature_engineer.csv')
@@ -41,5 +46,6 @@ for i in range(Y_test.shape[1]):
     plt.title(f'Target {i+1}: Actual vs Predicted')
     plt.xlabel('Samples')
     plt.ylabel('Values')
+    plt.savefig(os.path.join(output_dir, 'random_forest_forecast.png'))
     plt.legend()
     plt.show()

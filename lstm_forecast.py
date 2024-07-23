@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,6 +8,10 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout
 
 # Convert to pandas DataFrame for easier manipulation
 data = pd.read_csv('data/mixed_level/700_feature_engineer.csv')
+
+# Create a new directory to save the figures
+output_dir = 'lstm_result'
+os.makedirs(output_dir, exist_ok=True)
 
 df = data[['SF', 'Agg_Homes for Sale', 'List/Sell $']]
 
@@ -72,4 +77,5 @@ plt.figure(figsize=(14, 5))
 plt.plot(y_test_orig, color='blue', label='Actual')
 plt.plot(predictions, color='red', label='Predicted')
 plt.legend()
+plt.savefig(os.path.join(output_dir, 'lstm.png'))
 plt.show()

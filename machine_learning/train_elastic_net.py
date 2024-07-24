@@ -8,8 +8,8 @@ from sklearn.impute import SimpleImputer
 # Load the dataset with the correct relative path
 df = pd.read_csv('../data/mixed_level/700_feature_engineer.csv', low_memory=False)
 
-# Drop the 'MLS' column as it is just an identifier
-df.drop('MLS', axis=1, inplace=True)
+# Drop the 'MLS' and 'List/Sell $' columns as they are not needed
+df.drop(['MLS', 'List/Sell $','Agg_Date'], axis=1, inplace=True)
 
 # Convert 'Stat Date' to datetime
 df['Stat Date'] = pd.to_datetime(df['Stat Date'], errors='coerce')
@@ -19,8 +19,8 @@ df['Stat Year'] = df['Stat Date'].dt.year
 df['Stat Month'] = df['Stat Date'].dt.month
 df['Stat Day'] = df['Stat Date'].dt.day
 
-# Drop the original 'Stat Date' column and 'Agg_Date' column
-df.drop(['Stat Date', 'Agg_Date'], axis=1, inplace=True)
+# Drop the original 'Stat Date' column
+df.drop('Stat Date', axis=1, inplace=True)
 
 # Convert all other columns to numeric, coerce errors to NaN
 for col in df.columns:
@@ -30,14 +30,14 @@ for col in df.columns:
 imputer = SimpleImputer(strategy='mean')
 df_imputed = pd.DataFrame(imputer.fit_transform(df), columns=df.columns)
 
-# Define target variable and features, including 'Log Price'
-target = 'List/Sell $'
+# Define target variable and features
+target = 'Log Price'  
 features = [col for col in df_imputed.columns if col != target]
 
 X = df_imputed[features]
 y = df_imputed[target]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
 # Initialize the ElasticNet model
 elastic_net = ElasticNet()

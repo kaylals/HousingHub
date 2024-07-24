@@ -4,10 +4,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 # Load the data
-file_path = './combined_df_normalized.csv'
-data = pd.read_csv(file_path)
+input_path = 'data/aggregated_700_normalized.csv'
+data = pd.read_csv(input_path)
 
 # Convert the 'Date' column to datetime format
 data['Date'] = pd.to_datetime(data['Date'])
@@ -16,7 +17,7 @@ data['Date'] = pd.to_datetime(data['Date'])
 data.set_index('Date', inplace=True)
 
 # Create a new directory to save the figures
-output_dir = './result/time_series_analysis_results'
+output_dir = 'data/result/time_series_analysis_results'
 os.makedirs(output_dir, exist_ok=True)
 
 # Define a function to analyze a time series variable and save the figures
@@ -37,23 +38,30 @@ def analyze_time_series(variable):
     plt.savefig(os.path.join(output_dir, f'{variable}_decomposition.png'))
     plt.close()
 
-    # ARIMA Modeling
-    model = ARIMA(data[variable], order=(5, 1, 0))  # ARIMA(p, d, q) order
-    arima_result = model.fit()
-    summary_text = arima_result.summary().as_text()
+    # # ARIMA Modeling
+    # model = ARIMA(data[variable], order=(5, 1, 0))  # ARIMA(p, d, q) order
+    # arima_result = model.fit()
+    # summary_text = arima_result.summary().as_text()
+
+    # SARIMA Modeling
+    model = SARIMAX(data[variable], 
+                    order=(5, 1, 0),  # ARIMA(p, d, q) order
+                    seasonal_order=(1, 1, 1, 12))  # Seasonal order (P, D, Q, S)
+    sarima_result = model.fit()
+    summary_text = sarima_result.summary().as_text()
     
     # Save the ARIMA summary to a text file
-    summary_file_path = os.path.join(output_dir, f'{variable}_arima_summary.txt')
-    with open(summary_file_path, 'w') as f:
+    summary_input_path = os.path.join(output_dir, f'{variable}_sarima_summary.txt')
+    with open(summary_input_path, 'w') as f:
         f.write(summary_text)
 
     # Plot the fitted values
     plt.figure(figsize=(12, 6))
     plt.plot(data[variable], label='Original')
     plt.plot(arima_result.fittedvalues, color='red', label='Fitted')
-    plt.title(f'ARIMA Model Fitting for {variable}')
+    plt.title(f'SARIMA Model Fitting for {variable}')
     plt.legend()
-    plt.savefig(os.path.join(output_dir, f'{variable}_arima.png'))
+    plt.savefig(os.path.join(output_dir, f'{variable}_sarima.png'))
     plt.close()
 
 # Get the list of variables (all columns except 'Date')

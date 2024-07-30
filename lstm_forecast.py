@@ -13,7 +13,7 @@ data = pd.read_csv('data/mixed_level/700_feature_engineer.csv')
 output_dir = 'lstm_result'
 os.makedirs(output_dir, exist_ok=True)
 
-df = data[['SF', 'Agg_Homes for Sale', 'List/Sell $']]
+df = data[['SF', 'List/Sell $']]
 
 # Normalize the dataset
 scaler = MinMaxScaler()
@@ -34,10 +34,10 @@ def create_sequences(data, seq_length):
     return np.array(xs), np.array(ys)
 
 # Parameters
-SEQ_LENGTH = 10
+SEQ_LENGTH = 30
 
 # Create sequences
-X, y = create_sequences(scaled_df.values, SEQ_LENGTH)
+X, y = create_sequences(df.values, SEQ_LENGTH)
 
 # Split into train and test sets
 SPLIT = int(0.8 * len(X))
@@ -65,17 +65,17 @@ print(f'Test Loss: {loss}')
 
 # Make predictions
 predictions = model.predict(X_test)
-
+print(predictions)
 # Inverse transform predictions to original scale
-predictions = scaler.inverse_transform(np.concatenate([X_test[:, -1, :-1], predictions], axis=1))[:, -1]
+#predictions = scaler.inverse_transform(np.concatenate([X_test[:, -1, :-1], predictions], axis=1))[:, -1]
 
 # Inverse transform actual values to original scale
-y_test_orig = scaler.inverse_transform(np.concatenate([X_test[:, -1, :-1], y_test.reshape(-1, 1)], axis=1))[:, -1]
+#y_test_orig = scaler.inverse_transform(np.concatenate([X_test[:, -1, :-1], y_test.reshape(-1, 1)], axis=1))[:, -1]
 
 # Plot results
 plt.figure(figsize=(14, 5))
-plt.plot(y_test_orig, color='blue', label='Actual')
+#plt.plot(y_test_orig, color='blue', label='Actual')
 plt.plot(predictions, color='red', label='Predicted')
 plt.legend()
-plt.savefig(os.path.join(output_dir, 'lstm.png'))
+#plt.savefig(os.path.join(output_dir, 'lstm.png'))
 plt.show()

@@ -8,20 +8,6 @@ from sklearn.impute import SimpleImputer
 # Load the dataset with the correct relative path
 df = pd.read_csv('../data/mixed_level/700_feature_engineer.csv', low_memory=False)
 
-# Drop the 'MLS' and 'List/Sell $' columns as they are not needed
-df.drop(['MLS', 'List/Sell $','Agg_Date'], axis=1, inplace=True)
-
-# Convert 'Stat Date' to datetime
-df['Stat Date'] = pd.to_datetime(df['Stat Date'], errors='coerce')
-
-# Extract year, month, and day from 'Stat Date'
-df['Stat Year'] = df['Stat Date'].dt.year
-df['Stat Month'] = df['Stat Date'].dt.month
-df['Stat Day'] = df['Stat Date'].dt.day
-
-# Drop the original 'Stat Date' column
-df.drop('Stat Date', axis=1, inplace=True)
-
 # Convert all other columns to numeric, coerce errors to NaN
 for col in df.columns:
     df[col] = pd.to_numeric(df[col], errors='coerce')

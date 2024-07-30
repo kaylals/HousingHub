@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV, learning_curve
 from sklearn.metrics import mean_squared_error, r2_score
 import xgboost as xgb
 import matplotlib.pyplot as plt
@@ -8,19 +8,6 @@ import matplotlib.pyplot as plt
 # Load the dataset with the correct relative path
 df = pd.read_csv('../data/mixed_level/700_feature_engineer.csv', low_memory=False)
 
-# Drop the 'MLS' and 'List/Sell $' columns as they are not required for training
-df.drop(['MLS', 'List/Sell $'], axis=1, inplace=True)
-
-# Convert 'Stat Date' to datetime
-df['Stat Date'] = pd.to_datetime(df['Stat Date'], errors='coerce')
-
-# Extract year, month, and day from 'Stat Date'
-df['Stat Year'] = df['Stat Date'].dt.year
-df['Stat Month'] = df['Stat Date'].dt.month
-df['Stat Day'] = df['Stat Date'].dt.day
-
-# Drop the original 'Stat Date' column
-df.drop('Stat Date', axis=1, inplace=True)
 
 # Convert all other columns to numeric, coercing errors to NaN
 df = df.apply(pd.to_numeric, errors='coerce')
@@ -79,6 +66,52 @@ r2_test = r2_score(y_test, y_test_pred)
 print("Test RMSE: %f" % (rmse_test))
 print("Test R²: %f" % (r2_test))
 
-# Plot feature importance
-xgb.plot_importance(best_xg_reg)
-plt.show()
+
+
+# # Plot feature importance
+# xgb.plot_importance(best_xg_reg)
+# plt.show()
+
+# Function to plot learning curves
+# def plot_learning_curve(estimator, title, X, y, cv=None, n_jobs=None, train_sizes=np.linspace(.1, 1.0, 5)):
+#     plt.figure()
+#     plt.title(title)
+#     plt.xlabel("Training examples")
+#     plt.ylabel("RMSE")
+
+#     train_sizes, train_scores, test_scores = learning_curve(
+#         estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes, scoring='neg_mean_squared_error')
+
+#     train_scores_mean = np.mean(-train_scores, axis=1)
+#     train_scores_std = np.std(-train_scores, axis=1)
+#     test_scores_mean = np.mean(-test_scores, axis=1)
+#     test_scores_std = np.std(-test_scores, axis=1)
+
+#     plt.grid()
+
+#     plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
+#                      train_scores_mean + train_scores_std, alpha=0.1,
+#                      color="r")
+#     plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
+#                      test_scores_mean + test_scores_std, alpha=0.1, color="g")
+#     plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
+#              label="Training score")
+#     plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
+#              label="Cross-validation score")
+
+#     plt.legend(loc="best")
+#     return plt
+
+# # Plot learning curves for the best model
+# plot_learning_curve(best_xg_reg, "Learning Curves (XGBoost)", X_train_full, y_train_full, cv=5)
+# plt.show()
+
+
+
+# residuals = y_test - y_test_pred
+# plt.scatter(y_test_pred, residuals)
+# plt.xlabel("Predicted Values")
+# plt.ylabel("Residuals")
+# plt.title("Residual Plot")
+# plt.axhline(y=0, color='r', linestyle='-')
+# plt.show()

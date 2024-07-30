@@ -15,12 +15,16 @@ df = df.apply(pd.to_numeric, errors='coerce')
 # Fill missing values with the mean
 df.fillna(df.mean(), inplace=True)
 
-# Define target variable and features
-target = 'Log Price'  
-features = [col for col in df.columns if col != target]
+# Remove the specific high VIF features identified
+features_to_remove = ['Type_1940', 'Price_per_Bedroom', 'Size Category_Medium', 'Bths', 'Bds', 'Type_COND']
+df_reduced = df.drop(columns=features_to_remove)
 
-X = df[features]
-y = df[target]
+# Define target variable and features
+target = 'Log Price'
+features = [col for col in df_reduced.columns if col != target]
+
+X = df_reduced[features]
+y = df_reduced[target]
 
 # Split the data into 85% for training (including cross-validation) and 15% for testing
 X_train_full, X_test, y_train_full, y_test = train_test_split(X, y, test_size=0.15, random_state=42)

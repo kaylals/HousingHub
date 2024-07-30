@@ -259,5 +259,13 @@ print(columns_with_nulls)
 
 
 # Save the engineered features
+
+df_final['Stat Date'] = pd.to_datetime(df_final['Stat Date'])
+df_final.set_index('Stat Date', inplace=True)
+
+column_to_delete = ['MLS','List/Sell $', 'Agg_Year', 'Agg_Month', 'Agg_Day', 'Agg_Date']
+df_final = df_final.drop(columns=column_to_delete)
+
+
 df_final.to_csv(output_dir, index=False)
 print(f"\nEngineered features saved to {output_dir}")

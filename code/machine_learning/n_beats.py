@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import sys
-
 # Load your data
 input_path = "data/mixed_level/700_feature_engineer.csv"
 
@@ -14,9 +13,10 @@ data['Stat Date'] = pd.to_datetime(data['Stat Date'])
 data.set_index('Stat Date', inplace=True)
 
 # Scale the data
+column_to_delete = ['MLS','List/Sell $', 'Agg_Year', 'Agg_Month', 'Agg_Day', 'Agg_Date']
+data = data.drop(columns=column_to_delete)
+
 scaler = MinMaxScaler()
-column_to_delete = 'List/Sell $'
-data = data.drop(columns=[column_to_delete])
 data['Log Price'] = scaler.fit_transform(data[['Log Price']])
 
 # Split into training and validation sets

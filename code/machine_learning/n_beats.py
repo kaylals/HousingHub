@@ -9,11 +9,12 @@ import sys
 # Load your data
 input_path = "data/mixed_level/700_feature_engineer.csv"
 
-data = pd.read_csv(input_path)
+data = pd.read_csv('data/mixed_level/700_feature_engineer.csv', index_col='Stat Date', parse_dates=True)
+data = data.sort_index()
 
 # Scale the data
 scaler = MinMaxScaler()
-data['Log Price'] = scaler.fit_transform(data[['Log Price']])
+# data['Log Price'] = scaler.fit_transform(data[['Log Price']])
 
 # Split into training and validation sets
 train_size = int(len(data) * 0.8)

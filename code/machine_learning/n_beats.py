@@ -140,10 +140,10 @@ best_model = torch.load('best_nbeats_model.pth', weights_only=True)
 model.load_state_dict(best_model)
 
 # Load the losses
-with open('losses.pkl', 'rb') as f:
-    losses = pickle.load(f)
-    train_losses = losses['train_losses']
-    val_losses = losses['val_losses']
+# with open('losses.pkl', 'rb') as f:
+#     losses = pickle.load(f)
+#     train_losses = losses['train_losses']
+#     val_losses = losses['val_losses']
 
 
 model.eval()
@@ -162,16 +162,16 @@ final_targets = np.concatenate(final_targets)
 
 import matplotlib.pyplot as plt
 
-# Plotting the training and validation loss curves
-plt.figure(figsize=(10, 5))
-plt.plot(train_losses, label='Training Loss')
-plt.plot(val_losses, label='Validation Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.title('Training and Validation Loss Over Epochs')
-plt.legend()
-plt.savefig(os.path.join(output_folder, 'loss_curves.png'))
-plt.show()
+# # Plotting the training and validation loss curves
+# plt.figure(figsize=(10, 5))
+# plt.plot(train_losses, label='Training Loss')
+# plt.plot(val_losses, label='Validation Loss')
+# plt.xlabel('Epoch')
+# plt.ylabel('Loss')
+# plt.title('Training and Validation Loss Over Epochs')
+# plt.legend()
+# plt.savefig(os.path.join(output_folder, 'loss_curves.png'))
+# plt.show()
 
 
 
@@ -219,7 +219,7 @@ plt.figure(figsize=(15, 8))
 residuals = data.iloc[train_size:train_size+len(final_predictions), 0].values - final_predictions[:, 0]
 
 # Plot residuals for the last 60 days
-plt.plot(pred_dates[last_60_pred_mask], residuals[last_60_pred_mask], label='Residuals')
+plt.bar(pred_dates[last_60_pred_mask], residuals[last_60_pred_mask], label='Residuals')
 
 plt.title('Residuals of Predictions (Last 60 Days)')
 plt.xlabel('Date')

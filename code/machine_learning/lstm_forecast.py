@@ -12,7 +12,7 @@ data = pd.read_csv('data/mixed_level/700_feature_engineer.csv', index_col='Stat 
 data = data.sort_index()
 
 # Selecting multiple features (replace with your actual column names)
-features = ['SF', 'Total_Rooms', 'Bds']
+features = ['SF', 'Total_Rooms', 'Bds', 'Agg_Homes for Sale', 'Type_COND', 'Type_RENT', 'Type_RESI', 'Size Category_Large', 'Size Category_Medium', 'Size Category_Small']
 target = ['Log Price']
 
 scaler_features = MinMaxScaler(feature_range=(0, 1))
@@ -50,7 +50,7 @@ model = Sequential([
 model.compile(optimizer='adam', loss='mean_squared_error')
 
 # Train the model
-history = model.fit(X_train, y_train, batch_size=32, epochs=5, validation_split=0.2)
+history = model.fit(X_train, y_train, batch_size=32, epochs=20, validation_split=0.2)
 
 plt.plot(history.history['loss'], label='Training Loss')
 plt.plot(history.history['val_loss'], label='Validation Loss')
@@ -86,7 +86,6 @@ def plot_predictions(results):
     plt.show()
 
 plot_predictions(results)
-
 
 # Calculate error metrics
 def calculate_metrics(predictions, actual):

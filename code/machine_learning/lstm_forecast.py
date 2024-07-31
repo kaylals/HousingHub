@@ -88,8 +88,6 @@ def plot_predictions(results):
 plot_predictions(results)
 
 
-sys.exit()
-
 # Calculate error metrics
 def calculate_metrics(predictions, actual):
     mae = mean_absolute_error(actual, predictions)

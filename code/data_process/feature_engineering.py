@@ -7,8 +7,8 @@ import sys
 
 
 # environment variables
-input_dir = 'data/individual_level/processed/700_encoded.csv'      # test: 'data/individual_level/test/encoded_700_test.csv'
-output_dir =  'data/mixed_level/700_feature_engineer.csv'    # test:  'data/individual_level/test/features_test.csv' 
+input_dir = 'data/tableau_stat/700.csv'      # test: 'data/individual_level/test/encoded_700_test.csv'
+output_dir =  'data/tableau_stat/700_fe.csv'    # test:  'data/individual_level/test/features_test.csv' 
 input_dir_aggre = 'data/aggregated_700.csv'
 # Load encoded transactional data and aggregated data
 df = pd.read_csv(input_dir)

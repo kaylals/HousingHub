@@ -1,0 +1,67 @@
+import pandas as pd
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+import os
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# environment variables
+categorical_columns = ['Type', 'Stat']
+input_dir = 'data/individual_level/raw_csv_700'
+output_dir = 'data/tableau_stat/700.csv'
+files = [os.path.join(input_dir, file) for file in os.listdir(input_dir) if file.endswith('.csv')]
+dfs = [pd.read_csv(file) for file in files]
+combined_df = pd.concat(dfs, ignore_index=True)
+
+# logger.info(f"Columns in the DataFrame: {combined_df.columns.tolist()}")
+
+
+# Step 1: correct data types
+
+def convert_price(price_str):
+    price_cleaned = price_str.replace("$", "").replace(",", "")
+    return float(price_cleaned)
+
+combined_df['List/Sell $'] = combined_df['List/Sell $'].apply(convert_price)
+
+
+def convert_to_float(value):
+    if isinstance(value, str):
+        return float(value.replace(',', ''))
+    elif pd.isna(value):
+        return pd.np.nan
+    else:
+        return float(value)
+
+combined_df['SF'] = combined_df['SF'].apply(convert_to_float)
+
+# Step 2: drop constant columns
+constant_columns = [col for col in combined_df.columns if combined_df[col].nunique() == 1]
+if 'Address' in combined_df.columns:
+    constant_columns.append('Address')
+
+final_df = combined_df.drop(columns=constant_columns)
+
+
+
+final_df['Stat Date'] = pd.to_datetime(final_df['Stat Date'], errors='coerce')
+
+# Extract Year, Month, and Day
+final_df['Year'] = final_df['Stat Date'].dt.year
+final_df['Month'] = final_df['Stat Date'].dt.month
+final_df['Day'] = final_df['Stat Date'].dt.day
+
+
+# Output the final DataFrame
+print(final_df.head())
+logger.info(f"Final DataFrame columns: {final_df.columns.tolist()}")
+
+
+final_df.to_csv(output_dir, index=False)
+
+# final_df.head().to_csv('data/individual_level/test/encoded_700_test.csv', index=False)
+print(f"Encoded data saved to {output_dir}")
+

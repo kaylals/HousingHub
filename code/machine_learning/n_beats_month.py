@@ -108,7 +108,7 @@ def calculate_metrics(y_true, y_pred):
 
 
 def load_model_and_losses():
-    best_model = torch.load('best_nbeats_model.pth')
+    best_model = torch.load('best_nbeats_model_by_month.pth')
     model_monthly.load_state_dict(best_model)
     
     with open('losses.pkl', 'rb') as f:
@@ -211,7 +211,7 @@ def train_model():
             best_model = model_monthly.state_dict()
 
     # Save the best model
-    torch.save(best_model, 'best_nbeats_model.pth')
+    torch.save(best_model, 'best_nbeats_model_by_month.pth')
     
     # Save losses
     with open('losses.pkl', 'wb') as f:
@@ -329,7 +329,7 @@ plot_results()
 
 sys.exit()
 
-model_monthly.load_state_dict(torch.load('best_nbeats_model.pth'))
+model_monthly.load_state_dict(torch.load('best_nbeats_model_by_month.pth'))
 model_monthly.eval()
 
 def get_monthly_prediction(input_date, bedrooms):

@@ -208,7 +208,7 @@ def train_model():
             best_model = model.state_dict()
 
     # Save the best model
-    torch.save(best_model, 'best_nbeats_model.pth')
+    torch.save(best_model, 'best_nbeats_model_by_day.pth')
     
     # Save losses
     with open('losses.pkl', 'wb') as f:
@@ -316,7 +316,7 @@ plot_results()
 
 
 
-model.load_state_dict(torch.load('best_nbeats_model.pth'))
+model.load_state_dict(torch.load('best_nbeats_model_by_day.pth'))
 model.eval()
 
 

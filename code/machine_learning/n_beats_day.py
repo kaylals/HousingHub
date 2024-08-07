@@ -71,6 +71,8 @@ val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+
+
 class NBeatsNetWithDropout(NBeatsNet):
     def __init__(self, *args, **kwargs):
         super(NBeatsNetWithDropout, self).__init__(*args, **kwargs)
@@ -81,21 +83,21 @@ class NBeatsNetWithDropout(NBeatsNet):
         forecast = self.dropout(forecast)  # Apply dropout to the forecast
         return backcast, forecast
 
-# Update the model initialization
+# Load the saved model
 model = NBeatsNetWithDropout(
     device=device,
     stack_types=(NBeatsNet.GENERIC_BLOCK,),
-    forecast_length=output_steps,
-    backcast_length=input_steps * X.shape[1],  # Multiply by number of features
+    forecast_length=7,  # Assuming you're predicting 7 days ahead
+    backcast_length=30 * X.shape[1],  # Adjust based on your input size
     hidden_layer_units=16,
     nb_blocks_per_stack=3,
     thetas_dim=(4, 8),
     share_weights_in_stack=False
 ).to(device)
-
 # Define the optimizer and loss function
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-5, weight_decay=1e-4)
 loss_fn = torch.nn.MSELoss()
+
 
 def calculate_metrics(y_true, y_pred):
     # Remove NaN values
@@ -134,8 +136,7 @@ def conditional_plot(plot=True):
         return wrapper_plot
     return decorator_plot
 
-
-@conditional_run(run_model=False)
+@conditional_run(run_model=True)
 def train_model():
     # Training loop
     train_losses = []
@@ -310,47 +311,15 @@ def plot_results():
     plt.savefig(os.path.join(output_folder, 'time_series_forecast_last_60_days.png'))
     plt.close()
 
-# train_model()
-# plot_results()
+train_model()
+plot_results()
 
 
-
-
-# Load the saved model
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = NBeatsNetWithDropout(
-    device=device,
-    stack_types=(NBeatsNet.GENERIC_BLOCK,),
-    forecast_length=7,  # Assuming you're predicting 7 days ahead
-    backcast_length=30 * X.shape[1],  # Adjust based on your input size
-    hidden_layer_units=16,
-    nb_blocks_per_stack=3,
-    thetas_dim=(4, 8),
-    share_weights_in_stack=False
-).to(device)
 
 model.load_state_dict(torch.load('best_nbeats_model.pth'))
 model.eval()
 
-# Load and preprocess your data
-data = pd.read_csv(input_path, index_col='Stat Date', parse_dates=True)
-data = data.sort_index()
 
-# Define the pattern to match columns that start with "Type" and end with numbers
-pattern = re.compile(r'^Type_\d+$')
-
-# Filter out columns that match the pattern
-columns_to_drop = [col for col in data.columns if pattern.match(col)]
-data = data.drop(columns=columns_to_drop)
-
-# Separate features and target
-y = data['Log Price']
-X = data.drop('Log Price', axis=1)
-
-# Scale the data
-scaler = MinMaxScaler()
-X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns, index=X.index)
-y_scaled = pd.DataFrame(scaler.fit_transform(y.values.reshape(-1, 1)), columns=['Log Price'], index=y.index)
 
 def get_prediction(input_date):
     # Convert input_date to datetime if it's not already

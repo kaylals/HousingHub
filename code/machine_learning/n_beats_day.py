@@ -26,7 +26,7 @@ columns_to_drop = [col for col in data.columns if pattern.match(col)]
 data = data.drop(columns=columns_to_drop)
 
 # Save the modified DataFrame back to CSV if needed
-data.to_csv('cleaned_type_feature_engineer.csv', index=False)
+data.to_csv('data/cleaned_type_feature_engineer.csv', index=False)
 
 # Separate features and target
 y = data['Log Price']
@@ -54,8 +54,8 @@ def create_dataset(X, y, input_steps, output_steps):
 
 # Split into training and validation sets
 train_size = int(len(data) * 0.8)
-input_steps = 30  # Number of past observations to use
-output_steps = 7  # Number of future steps to predict
+input_steps = 90  # Number of past observations to use
+output_steps = 30  # Number of future steps to predict
 
 X_train, X_val = X_scaled.iloc[:train_size], X_scaled.iloc[train_size:]
 y_train, y_val = y_scaled.iloc[:train_size], y_scaled.iloc[train_size:]
@@ -87,17 +87,20 @@ class NBeatsNetWithDropout(NBeatsNet):
 model = NBeatsNetWithDropout(
     device=device,
     stack_types=(NBeatsNet.GENERIC_BLOCK,),
-    forecast_length=7,  # Assuming you're predicting 7 days ahead
-    backcast_length=30 * X.shape[1],  # Adjust based on your input size
-    hidden_layer_units=16,
-    nb_blocks_per_stack=3,
+    forecast_length=30,  # Assuming you're predicting 7 days ahead
+    backcast_length=90 * X.shape[1],  # Adjust based on your input size
+    hidden_layer_units=32,
+    nb_blocks_per_stack=4,
     thetas_dim=(4, 8),
     share_weights_in_stack=False
 ).to(device)
+
+
 # Define the optimizer and loss function
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-5, weight_decay=1e-4)
 loss_fn = torch.nn.MSELoss()
-
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+scheduler = ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
 
 def calculate_metrics(y_true, y_pred):
     # Remove NaN values
@@ -136,12 +139,33 @@ def conditional_plot(plot=True):
         return wrapper_plot
     return decorator_plot
 
-@conditional_run(run_model=True)
+class EarlyStopping:
+    def __init__(self, patience: int = 10, min_delta: float = 0.0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.best_loss = None
+        self.early_stop = False
+
+    def __call__(self, val_loss: float):
+        if self.best_loss is None:
+            self.best_loss = val_loss
+        elif val_loss > self.best_loss - self.min_delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_loss = val_loss
+            self.counter = 0
+
+early_stopping = EarlyStopping(patience=10, min_delta=0.001)
+
+@conditional_run(run_model=False)
 def train_model():
     # Training loop
     train_losses = []
     val_losses = []
-    epochs = 10
+    epochs = 30
     best_val_loss = float('inf')
     best_model = None
 
@@ -194,7 +218,8 @@ def train_model():
                 val_predictions.append(forecast.cpu().numpy())
                 val_targets.append(y.cpu().numpy())
         
-        val_losses.append(val_loss / len(val_loader))
+        avg_val_loss = val_loss / len(val_loader)
+        val_losses.append(avg_val_loss)
         val_predictions = np.concatenate(val_predictions)
         val_targets = np.concatenate(val_targets)
         val_mae, val_mse, val_rmse = calculate_metrics(val_targets, val_predictions)
@@ -207,6 +232,12 @@ def train_model():
             best_val_loss = val_loss
             best_model = model.state_dict()
 
+        # Call early stopping
+        early_stopping(avg_val_loss)
+        if early_stopping.early_stop:
+            print("Early stopping triggered")
+            break
+
     # Save the best model
     torch.save(best_model, 'best_nbeats_model_by_day.pth')
     
@@ -215,14 +246,14 @@ def train_model():
         pickle.dump({'train_losses': train_losses, 'val_losses': val_losses}, f)
 
 def load_model_and_losses():
-    best_model = torch.load('best_nbeats_model.pth')
+    best_model = torch.load('best_nbeats_model_by_day.pth')
     model.load_state_dict(best_model)
     
     with open('losses.pkl', 'rb') as f:
         losses = pickle.load(f)
         return model, losses
 
-@conditional_plot(plot=True)
+@conditional_plot(plot=False)
 def plot_results():
     # Load the model and losses
     model, losses = load_model_and_losses()
@@ -321,18 +352,31 @@ model.eval()
 
 
 
-def get_prediction(input_date):
-    # Convert input_date to datetime if it's not already
-    input_date = pd.to_datetime(input_date)
+
+# Define the prediction function
+def get_prediction(start_date, range_dates, bedrooms, bathrooms):
+    # Ensure range_dates is within the model's capability
+    if range_dates > 30:
+        raise ValueError("range_dates cannot exceed 30 days")
     
-    # Get the 30 days of data before the input date
-    start_date = input_date - pd.Timedelta(days=30)
-    input_data = X_scaled.loc[start_date:input_date].iloc[-30:]
+    # Convert start_date to datetime if it's not already
+    start_date = pd.to_datetime(start_date)
+    
+    # Calculate end_date based on the range of days
+    end_date = start_date + pd.Timedelta(days=range_dates-1)
+    
+    # Filter the data based on user input for bedrooms and bathrooms
+    filtered_data = X_scaled[(X_scaled['Bds'] == bedrooms) & 
+                             (X_scaled['Bths'] == bathrooms)]
+    
+    # Select data for the input window (90 days before start_date)
+    input_start = start_date - pd.Timedelta(days=90)
+    input_data = filtered_data.loc[input_start:start_date]
     
     # If we don't have enough data, pad with zeros
-    if len(input_data) < 30:
-        pad_length = 30 - len(input_data)
-        pad_data = pd.DataFrame(np.zeros((pad_length, X_scaled.shape[1])), columns=X_scaled.columns)
+    if len(input_data) < 90:
+        pad_length = 90 - len(input_data)
+        pad_data = pd.DataFrame(np.zeros((pad_length, filtered_data.shape[1])), columns=filtered_data.columns)
         input_data = pd.concat([pad_data, input_data])
     
     # Prepare the input for the model
@@ -342,24 +386,46 @@ def get_prediction(input_date):
     with torch.no_grad():
         _, forecast = model(model_input)
     
-    # Convert the forecast back to the original log scale
+    # Convert the forecast back to the original scale
     forecast_log = scaler.inverse_transform(forecast.cpu().numpy().reshape(-1, 1))
     
     # Transform from log scale to original numeric scale
     forecast_numeric = np.exp(forecast_log)
     
     # Create a DataFrame with both forecasts
-    forecast_dates = pd.date_range(start=input_date + pd.Timedelta(days=1), periods=7)
+    forecast_dates = pd.date_range(start=start_date, periods=30)
     forecast_df = pd.DataFrame({
-        'Predicted Log Price': forecast_log.flatten(),
-        'Predicted Price': forecast_numeric.flatten()
-    }, index=forecast_dates)
+        'Date': forecast_dates.strftime('%Y-%m-%d'),
+        'Predicted Log Price': np.round(forecast_log.flatten(), 2),
+        'Predicted Price': forecast_numeric.flatten().astype(int)
+    })
     
-    return forecast_df
+    # Select only the requested range of dates
+    forecast_df = forecast_df.loc[forecast_df['Date'].between(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))]
+
+    
+    # Return the lists of dates, log prices, and prices
+    return forecast_df['Date'].tolist(), forecast_df['Predicted Log Price'].tolist(), forecast_df['Predicted Price'].tolist()
 
 # Example usage
-input_date = "2023-08-01"  # Replace with your desired date
-prediction = get_prediction(input_date)
-fullprice_predictions = prediction['Predicted Price']
-print(f"Prediction for 7 days starting from {input_date}:")
-print(prediction)
+start_date = "2023-08-01"  # Replace with your desired start date
+range_dates = 15           # Replace with the desired range in days (up to 30)
+bedrooms = 3
+bathrooms = 2
+
+dates, log_prices, prices = get_prediction(start_date, range_dates, bedrooms, bathrooms)
+
+
+
+from tabulate import tabulate
+def print_predictions_table(dates, log_prices, prices):
+    # Combine the lists into a table
+    table = list(zip(dates, log_prices, prices))
+    
+    # Define the headers for the table
+    headers = ["Date", "Log Price", "Price"]
+    
+    # Print the table
+    print(tabulate(table, headers=headers, tablefmt="grid"))
+
+print_predictions_table(dates, log_prices, prices)

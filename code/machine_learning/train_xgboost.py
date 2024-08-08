@@ -4,10 +4,17 @@ from sklearn.model_selection import train_test_split, GridSearchCV, learning_cur
 from sklearn.metrics import mean_squared_error, r2_score
 import xgboost as xgb
 import matplotlib.pyplot as plt
+import re
+import joblib
 
 # Load the dataset with the correct relative path
-df = pd.read_csv('../data/mixed_level/700_feature_engineer.csv', low_memory=False)
+df = pd.read_csv('../../data/mixed_level/700_feature_engineer.csv', low_memory=False)
 
+# Ensure 'Stat Date' is parsed as datetime
+df['Stat Date'] = pd.to_datetime(df['Stat Date'], errors='coerce')
+
+# # Filter the data to include only records from March 2020 onwards
+df = df[df['Stat Date'] >= '2020-03-01']
 
 # Convert all other columns to numeric, coercing errors to NaN
 df = df.apply(pd.to_numeric, errors='coerce')
@@ -15,8 +22,15 @@ df = df.apply(pd.to_numeric, errors='coerce')
 # Fill missing values with the mean
 df.fillna(df.mean(), inplace=True)
 
-# Remove the specific high VIF features identified
-features_to_remove = ['Type_1940', 'Price_per_Bedroom', 'Size Category_Medium', 'Bths', 'Bds', 'Type_COND']
+# Define the pattern to match columns that start with "Type" and end with numbers
+pattern = re.compile(r'^Type_\d+$')
+
+# Filter out columns that match the pattern
+columns_to_drop = [col for col in df.columns if pattern.match(col)]
+df = df.drop(columns=columns_to_drop)
+
+# Remove additional specific high VIF features identified
+features_to_remove = ['Price_per_Bedroom', 'Size Category_Medium', 'Total_Rooms', 'Type_COND']
 df_reduced = df.drop(columns=features_to_remove)
 
 # Define target variable and features
@@ -36,15 +50,17 @@ X_train, X_val, y_train, y_val = train_test_split(X_train_full, y_train_full, te
 param_grid = {
     'max_depth': [3, 5],
     'learning_rate': [0.01, 0.1],
-    'n_estimators': [50, 100, 200],
-    'colsample_bytree': [0.3, 0.7]
+    'n_estimators': [100, 200],
+    'colsample_bytree': [0.5, 0.7],
+    'subsample': [0.8, 1.0],
+    'reg_alpha': [0, 0.1],
+    'reg_lambda': [0, 0.1]
 }
-
 # Initialize the XGBoost model
 xg_reg = xgb.XGBRegressor(objective='reg:squarederror')
 
 # Set up Grid Search with cross-validation on the training set
-grid_search = GridSearchCV(estimator=xg_reg, param_grid=param_grid, scoring='neg_mean_squared_error', cv=5, verbose=1)
+grid_search = GridSearchCV(estimator=xg_reg, param_grid=param_grid, scoring='neg_mean_squared_error', cv=5, verbose=1, n_jobs=-1)
 
 # Fit Grid Search
 grid_search.fit(X_train, y_train)
@@ -70,7 +86,9 @@ r2_test = r2_score(y_test, y_test_pred)
 print("Test RMSE: %f" % (rmse_test))
 print("Test R²: %f" % (r2_test))
 
-
+# Save the best XGBoost model
+model_filename = 'best_xgboost_model.pkl'
+joblib.dump(best_xg_reg, model_filename)
 
 # # Plot feature importance
 # xgb.plot_importance(best_xg_reg)

@@ -414,7 +414,7 @@ bedrooms = 3
 bathrooms = 2
 
 dates, log_prices, prices = get_prediction(start_date, range_dates, bedrooms, bathrooms)
-
+print(type(dates))
 
 
 from tabulate import tabulate

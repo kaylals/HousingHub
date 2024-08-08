@@ -6,12 +6,24 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 
 # Create a sample time series data as a DataFrame
-data = pd.read_csv('data/mixed_level/700_feature_engineer.csv', index_col='Stat Date', parse_dates=True)
+data = pd.read_csv('data/cleaned_type_feature_engineer.csv', parse_dates=True)
 data = data.sort_index()
 
 # Selecting multiple features (replace with your actual column names)
-features = ['SF', 'Total_Rooms', 'Bds', 'Type_COND', 'Type_RENT', 'Type_RESI', 'Size Category_Large', 'Size Category_Medium', 'Size Category_Small', 'Stat_S', 'Stat_S-UL',
-            'Agg_Median Days on Market', 'Agg_Months Supply of Inventory (Closed)', 'Agg_New Listings', 'Agg_Pending Sales', 'Agg_Homes for Sale']
+'''features = ['SF', 'Total_Rooms', 'Bds', 'Type_COND', 'Type_RENT', 'Type_RESI', 'Size Category_Large', 'Size Category_Medium', 'Size Category_Small', 'Stat_S', 'Stat_S-UL',
+            'Agg_Median Days on Market', 'Agg_Months Supply of Inventory (Closed)', 'Agg_New Listings', 'Agg_Pending Sales', 'Agg_Homes for Sale']'''
+features = list(data.columns)
+features.remove('Log Price')
+features.remove('Year')
+features.remove('Month')
+features.remove('Day')
+features.remove('Agg_Average Price Per Square Foot')
+features.remove('Agg_Average Sales Price')
+features.remove('Agg_Median Price Per Square Foot')
+features.remove('Agg_Median Percent of Last Original Price')
+features.remove('Price_Per_SF')
+features.remove('Price_per_Bedroom')
+print(features)
 target = ['Log Price']
 
 # Create lagged features
@@ -23,8 +35,7 @@ def create_lagged_features(df, lags):
     return df
 
 # Parameters
-n_lags = 30
-test_size = 0.2
+n_lags = 500
 # Create features and target
 data = create_lagged_features(data, n_lags)
 X = data[features].values
@@ -35,13 +46,14 @@ y = data[target].values
 # X_train, X_test = X[:split_index], X[split_index:]
 # y_train, y_test = y[:split_index], y[split_index:]
 
-train_size = int(len(X) * 0.8)
+n_forecast = 30
+train_size = -1 - n_forecast
 X_train, X_test = X[:train_size], X[train_size:]
 y_train, y_test = y[:train_size], y[train_size:]
 
 
 # Train the Random Forest model
-model = RandomForestRegressor(n_estimators=len(X_train) // 3, random_state=0)
+model = RandomForestRegressor(n_estimators=3000, random_state=1)
 model.fit(X_train, y_train)
 
 # Make predictions
@@ -53,7 +65,6 @@ print(f'Mean Squared Error: {mse}')
 
 # Forecast future values
 # Let's say we want to forecast the next 10 steps
-n_forecast = 30
 last_observations = list(X[-1, :])
 
 future_forecasts = []

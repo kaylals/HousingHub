@@ -27,8 +27,8 @@ pattern = re.compile(r'^Type_\d+$')
 columns_to_drop = [col for col in df.columns if pattern.match(col)]
 df = df.drop(columns=columns_to_drop)
 
-# Remove additional specific high VIF features identified
-features_to_remove = ['Price_per_Bedroom', 'Size Category_Medium', 'Total_Rooms', 'Type_COND']
+# Remove additional specific high VIF features identified and drop Type_RENT
+features_to_remove = ['Price_per_Bedroom', 'Size Category_Medium', 'Total_Rooms', 'Type_RENT']
 df_reduced = df.drop(columns=features_to_remove)
 
 # Define target variable and features
@@ -36,19 +36,34 @@ target = 'Log Price'
 features = df_reduced.columns[df_reduced.columns != target]
 
 # Define the function to get predictions
-def get_prediction(start_date, range_months, bedrooms, bathrooms):
+def get_prediction(start_date, range_months, bedrooms, bathrooms, property_type):
     # Convert start_date to datetime
     start_date = datetime.strptime(start_date, '%Y-%m-%d')
     
     # Generate date range at monthly intervals
     future_dates = [start_date + relativedelta(months=i) for i in range(range_months)]
     
+    # Initialize the property type features
+    type_cond = 0
+    type_resi = 0
+    
+    if property_type == 'CONDO':
+        type_cond = 1
+    else:
+        type_cond = 0
+    if property_type == 'RESI':
+        type_resi = 1
+    else:
+         type_resi = 0
+
+    
     # Create a DataFrame for future dates with the provided features
     future_data = pd.DataFrame({
         'Bds': bedrooms,
         'Bths': bathrooms,
-        'Type_RESI': 1,  # Assuming the property is residential
-        'Stat_RESI': 1,  # Assuming the property status is residential
+        'Type_RESI': type_resi,  # User-selected property type
+        'Stat_RESI': type_resi,  # Assuming the property status matches the selected type
+        'Type_COND': type_cond,  # User-selected property type
         'Stat_S': 0,  # Assuming the property is not sold
         'Stat_S-UL': 0,  # Assuming the property is not under contract,
         'Month': [date.month for date in future_dates],  # Add Month as a feature to capture seasonality
@@ -66,6 +81,11 @@ def get_prediction(start_date, range_months, bedrooms, bathrooms):
                 mean_value = mean_values[col]
                 std_dev = std_devs[col] / 5  # Reduce the variance to 1/5th
                 future_data[col] = mean_value + np.random.normal(0, std_dev, size=range_months)
+    
+    # Ensure all expected columns are in the future_data, setting missing ones to zero
+    for col in features:
+        if col not in future_data.columns:
+            future_data[col] = 0
     
     # Drop the target column if it exists in the DataFrame
     if target in future_data.columns:
@@ -101,7 +121,8 @@ start_date = '2024-08-01'
 range_months = 24  # Predict for the next 24 months
 bedrooms = [3] * range_months  # Assume 3 bedrooms for each month
 bathrooms = [2] * range_months  # Assume 2 bathrooms for each month
+property_type = 'CONDO'  # User-selected property type (either 'CONDO' or 'RESI')
 
-predictions = get_prediction(start_date, range_months, bedrooms, bathrooms)
+predictions = get_prediction(start_date, range_months, bedrooms, bathrooms, property_type)
 print(predictions)
 

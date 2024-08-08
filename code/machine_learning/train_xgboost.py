@@ -30,7 +30,7 @@ columns_to_drop = [col for col in df.columns if pattern.match(col)]
 df = df.drop(columns=columns_to_drop)
 
 # Remove additional specific high VIF features identified
-features_to_remove = ['Price_per_Bedroom', 'Size Category_Medium', 'Total_Rooms', 'Type_COND']
+features_to_remove = ['Price_per_Bedroom', 'Size Category_Medium', 'Total_Rooms', 'Type_RENT']
 df_reduced = df.drop(columns=features_to_remove)
 
 # Define target variable and features
@@ -53,8 +53,9 @@ param_grid = {
     'n_estimators': [100, 200],
     'colsample_bytree': [0.5, 0.7],
     'subsample': [0.8, 1.0],
-    'reg_alpha': [0, 0.1],
-    'reg_lambda': [0, 0.1]
+    'reg_alpha': [0, 0.1, 1],  # Expanded range for regularization
+    'reg_lambda': [0.1, 1],    # Expanded range for regularization
+    'min_child_weight': [1, 5] # Adding another parameter
 }
 # Initialize the XGBoost model
 xg_reg = xgb.XGBRegressor(objective='reg:squarederror')
@@ -62,12 +63,14 @@ xg_reg = xgb.XGBRegressor(objective='reg:squarederror')
 # Set up Grid Search with cross-validation on the training set
 grid_search = GridSearchCV(estimator=xg_reg, param_grid=param_grid, scoring='neg_mean_squared_error', cv=5, verbose=1, n_jobs=-1)
 
-# Fit Grid Search
-grid_search.fit(X_train, y_train)
+# Fit Grid Search with early stopping
+grid_search.fit(
+    X_train, y_train)
 
 # Get the best parameters and best estimator
 best_params = grid_search.best_params_
 best_xg_reg = grid_search.best_estimator_
+
 
 # Evaluate the best model on the validation set
 y_val_pred = best_xg_reg.predict(X_val)
@@ -89,6 +92,22 @@ print("Test R²: %f" % (r2_test))
 # Save the best XGBoost model
 model_filename = 'best_xgboost_model.pkl'
 joblib.dump(best_xg_reg, model_filename)
+
+
+
+# # Evaluate the best model on the validation set
+# y_val_pred = best_xg_reg.predict(X_val)
+# rmse_val = np.sqrt(mean_squared_error(y_val, y_val_pred))
+# r2_val = r2_score(y_val, y_val_pred)
+
+# print("Best parameters found: ", best_params)
+# print("Validation RMSE: %f" % (rmse_val))
+# print("Validation R²: %f" % (r2_val))
+
+# # Plot feature importance
+# xgb.plot_importance(best_xg_reg)
+# plt.show()
+
 
 # # Plot feature importance
 # xgb.plot_importance(best_xg_reg)

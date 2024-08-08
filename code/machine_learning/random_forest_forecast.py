@@ -35,11 +35,13 @@ y = data[target].values
 # X_train, X_test = X[:split_index], X[split_index:]
 # y_train, y_test = y[:split_index], y[split_index:]
 
-X_train,X_test,y_train,y_test=train_test_split(X,y,test_size=test_size,random_state=0)
+train_size = int(len(X) * 0.8)
+X_train, X_test = X[:train_size], X[train_size:]
+y_train, y_test = y[:train_size], y[train_size:]
 
 
 # Train the Random Forest model
-model = RandomForestRegressor(n_estimators=100, random_state=0)
+model = RandomForestRegressor(n_estimators=len(X_train) // 3, random_state=0)
 model.fit(X_train, y_train)
 
 # Make predictions
@@ -51,7 +53,7 @@ print(f'Mean Squared Error: {mse}')
 
 # Forecast future values
 # Let's say we want to forecast the next 10 steps
-n_forecast = 10
+n_forecast = 30
 last_observations = list(X[-1, :])
 
 future_forecasts = []
@@ -65,13 +67,13 @@ def plot_predictions(results):
     plt.plot(results.index, results['Actual'], label='Actual Log Price')
     plt.plot(results.index, results['Predicted'], label='Predicted Log Price', linestyle='--')
     plt.title('Log Price Predictions vs Actual')
-    plt.xlabel('Date')
+    plt.xlabel(f'Last {n_forecast} days')
     plt.ylabel('Log Price')
     plt.legend()
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.show()
 
-results = pd.DataFrame({'Actual': y_test.flatten()[-11:-1], 
+results = pd.DataFrame({'Actual': y_test.flatten()[-1 - n_forecast:-1], 
                         'Predicted': future_forecasts})
 plot_predictions(results)

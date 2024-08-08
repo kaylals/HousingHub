@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 import joblib
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
@@ -35,12 +36,12 @@ target = 'Log Price'
 features = df_reduced.columns[df_reduced.columns != target]
 
 # Define the function to get predictions
-def get_prediction(start_date, range_dates, bedrooms, bathrooms):
+def get_prediction(start_date, range_months, bedrooms, bathrooms):
     # Convert start_date to datetime
     start_date = datetime.strptime(start_date, '%Y-%m-%d')
     
-    # Generate date range
-    future_dates = [start_date + timedelta(days=30 * i) for i in range(range_dates)]
+    # Generate date range at monthly intervals
+    future_dates = [start_date + relativedelta(months=i) for i in range(range_months)]
     
     # Create a DataFrame for future dates with the provided features
     future_data = pd.DataFrame({
@@ -50,7 +51,8 @@ def get_prediction(start_date, range_dates, bedrooms, bathrooms):
         'Stat_RESI': 1,  # Assuming the property status is residential
         'Stat_S': 0,  # Assuming the property is not sold
         'Stat_S-UL': 0,  # Assuming the property is not under contract,
-        'Month': [date.month for date in future_dates]  # Add Month as a feature to capture seasonality
+        'Month': [date.month for date in future_dates],  # Add Month as a feature to capture seasonality
+        'Year': [date.year for date in future_dates]     # Add Year for additional temporal context
     }, index=future_dates)
     
     # Add other required features with their mean values, reducing variance
@@ -63,7 +65,7 @@ def get_prediction(start_date, range_dates, bedrooms, bathrooms):
             else:
                 mean_value = mean_values[col]
                 std_dev = std_devs[col] / 5  # Reduce the variance to 1/5th
-                future_data[col] = mean_value + np.random.normal(0, std_dev, size=range_dates)
+                future_data[col] = mean_value + np.random.normal(0, std_dev, size=range_months)
     
     # Drop the target column if it exists in the DataFrame
     if target in future_data.columns:
@@ -82,18 +84,24 @@ def get_prediction(start_date, range_dates, bedrooms, bathrooms):
     future_data.reset_index(inplace=True)
     future_data.rename(columns={'index': 'Date'}, inplace=True)
     
-    # Format the Predicted_Price to be more readable
-    future_data['Predicted_Price'] = future_data['Predicted_Price'].apply(lambda x: f"${x:,.2f}")
+    # Convert predicted prices to numeric type for aggregation
+    future_data['Predicted_Price'] = future_data['Predicted_Price'].astype(float)
     
-    return future_data[['Date', 'Predicted_Price']]
+    # Aggregate predictions by month and year
+    future_data['Year-Month'] = future_data['Date'].dt.to_period('M')
+    aggregated_data = future_data.groupby('Year-Month').agg({'Predicted_Price': 'mean'}).reset_index()
+    
+    # Format the aggregated predicted prices for display
+    aggregated_data['Predicted_Price'] = aggregated_data['Predicted_Price'].apply(lambda x: f"${x:,.2f}")
+    
+    return aggregated_data
 
 # Example usage
 start_date = '2024-08-01'
-range_dates = 24  # Predict for the next 24 months
-bedrooms = [3] * range_dates  # Assume 3 bedrooms for each month
-bathrooms = [2] * range_dates  # Assume 2 bathrooms for each month
+range_months = 24  # Predict for the next 24 months
+bedrooms = [3] * range_months  # Assume 3 bedrooms for each month
+bathrooms = [2] * range_months  # Assume 2 bathrooms for each month
 
-predictions = get_prediction(start_date, range_dates, bedrooms, bathrooms)
+predictions = get_prediction(start_date, range_months, bedrooms, bathrooms)
 print(predictions)
-
 

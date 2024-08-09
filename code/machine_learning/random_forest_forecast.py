@@ -74,7 +74,7 @@ def prediction(start_date, range_dates, bedrooms=1, bathrooms=1):
     print(f'Mean Squared Error: {mse}')
 
     results = pd.DataFrame({'Actual': y_test.flatten(), 'Predicted': y_pred})
-
+    plot_predictions(results)
     return results
 
 results = prediction(0, 0)

@@ -53,6 +53,7 @@ model.compile(optimizer='adam', loss='mean_squared_error')
 # Train the model
 history = model.fit(X_train, y_train, batch_size=24, epochs=50, validation_split=0.2)
 
+
 plt.plot(history.history['loss'], label='Training Loss')
 plt.plot(history.history['val_loss'], label='Validation Loss')
 plt.title('Model Loss')

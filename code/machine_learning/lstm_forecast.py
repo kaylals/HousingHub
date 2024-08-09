@@ -12,8 +12,9 @@ data = pd.read_csv('data/mixed_level/700_feature_engineer.csv', index_col='Stat 
 data = data.sort_index()
 
 # Selecting multiple features (replace with your actual column names)
-features = ['SF', 'Total_Rooms', 'Bds', 'Agg_Homes for Sale', 'Type_COND', 'Type_RENT', 'Type_RESI', 'Size Category_Large', 'Size Category_Medium', 'Size Category_Small']
-target = ['Log Price']
+features = ['SF', 'Total_Rooms', 'Bds', 'Type_COND', 'Type_RENT', 'Type_RESI', 'Size Category_Large', 'Size Category_Medium', 'Size Category_Small', 'Stat_S', 'Stat_S-UL',
+            'Log Price', 'Agg_Months Supply of Inventory (Closed)', 'Agg_New Listings', 'Agg_Pending Sales', 'Agg_Homes for Sale']
+target = ['Agg_Median Days on Market']
 
 scaler_features = MinMaxScaler(feature_range=(0, 1))
 features_data = pd.DataFrame(scaler_features.fit_transform(data[features]), 
@@ -50,7 +51,8 @@ model = Sequential([
 model.compile(optimizer='adam', loss='mean_squared_error')
 
 # Train the model
-history = model.fit(X_train, y_train, batch_size=32, epochs=5, validation_split=0.2)
+history = model.fit(X_train, y_train, batch_size=24, epochs=50, validation_split=0.2)
+
 
 plt.plot(history.history['loss'], label='Training Loss')
 plt.plot(history.history['val_loss'], label='Validation Loss')
@@ -71,15 +73,15 @@ for i in range(10):
 results_index = data.index[train_size+seq_length:]
 results = pd.DataFrame({'Actual': y_test.flatten(), 
                         'Predicted': predictions.flatten()}, 
-                       index=results_index)
+                       index=results_index).dropna()
 
 def plot_predictions(results):
     plt.figure(figsize=(12, 6))
-    plt.plot(results.index, results['Actual'], label='Actual Log Price')
-    plt.plot(results.index, results['Predicted'], label='Predicted Log Price', linestyle='--')
-    plt.title('Log Price Predictions vs Actual')
+    plt.plot(results.index, results['Actual'], label=f'Actual {target[0]}')
+    plt.plot(results.index, results['Predicted'], label=f'Predicted {target[0]}', linestyle='--')
+    plt.title(f'{target[0]} Predictions vs Actual')
     plt.xlabel('Date')
-    plt.ylabel('Log Price')
+    plt.ylabel(f'{target[0]}')
     plt.legend()
     plt.xticks(rotation=45)
     plt.tight_layout()
@@ -98,7 +100,7 @@ def calculate_metrics(predictions, actual):
 mae, mse, rmse = calculate_metrics(results['Predicted'], results['Actual'])
 
 # Print metrics
-print(f"Metrics for Log Price:")
+print(f"Metrics for {target[0]}:")
 print(f"  MAE: {mae:.4f}")
 print(f"  MSE: {mse:.4f}")
 print(f"  RMSE: {rmse:.4f}")

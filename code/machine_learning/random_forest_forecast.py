@@ -1,10 +1,11 @@
-import numpy as np
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from flask import Flask
+from flask import send_file
 
 app = Flask(__name__)
 
@@ -18,7 +19,7 @@ def plot_predictions(results, n_forecast=60):
     plt.legend()
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join("result/random_forest_forecast", 'acutals_vs_predictions.png'))
 
 # Create lagged features
 def create_lagged_features(df, lags, target):
@@ -75,13 +76,13 @@ def prediction(start_date, range_dates, bedrooms=1, bathrooms=1):
 
     results = pd.DataFrame({'Actual': y_test.flatten(), 'Predicted': y_pred})
     plot_predictions(results)
-    return results
 
-results = prediction(0, 0)
+
 
 @app.get("/model1")
 def api():
-    return results.to_json()
+    prediction(0, 0)
+    return send_file("C:/Users/songl/Desktop/housing hub/HousingHub/result/random_forest_forecast/acutals_vs_predictions.png")
 
 if __name__ == '__main__':
    app.run()

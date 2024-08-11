@@ -9,7 +9,7 @@ declare global {
 const TableauEmbed: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const vizRef = useRef<any>(null);
-  const url = "https://public.tableau.com/views/SalesAnalysisDashboard_16971728056280/SalesDashboard-Overview";
+  const url = "https://public.tableau.com/views/HousingHub_Tableau/AverageSales";
 
   const initViz = () => {
     if (vizRef.current) {

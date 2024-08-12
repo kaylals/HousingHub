@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -5,17 +6,21 @@ from dateutil.relativedelta import relativedelta
 import joblib
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
+from flask import Flask
+from flask import send_file
+
+app = Flask(__name__)
 
 # Set a random seed for reproducibility
 RANDOM_SEED = 42
 np.random.seed(RANDOM_SEED)
 
 # Load the trained model
-model_filename = 'best_xgboost_model.pkl'
+model_filename = 'code/machine_learning/best_xgboost_model.pkl'
 best_xg_reg = joblib.load(model_filename)
 
 # Load the dataset to get mean values for missing features
-df = pd.read_csv('../../data/mixed_level/700_feature_engineer.csv', low_memory=False)
+df = pd.read_csv('data/mixed_level/700_feature_engineer.csv', low_memory=False)
 df = df.apply(pd.to_numeric, errors='coerce')
 df.fillna(df.mean(), inplace=True)
 
@@ -34,6 +39,17 @@ df_reduced = df.drop(columns=features_to_remove)
 # Define target variable and features
 target = 'Log Price'
 features = df_reduced.columns[df_reduced.columns != target]
+
+def plot_predictions(results):
+    plt.figure(figsize=(12, 6))
+    plt.plot(results.index, results['Predicted_Price'], label='Predicted Log Price')
+    plt.title('Log Price Predictions')
+    plt.xlabel(f'Months')
+    plt.ylabel('Log Price')
+    plt.legend()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig(os.path.join("result/n_beats", 'predictions.png'))
 
 # Define the function to get predictions
 def get_prediction(start_date, range_months, bedrooms, bathrooms, property_type):
@@ -113,16 +129,21 @@ def get_prediction(start_date, range_months, bedrooms, bathrooms, property_type)
     
     # Format the aggregated predicted prices for display
     aggregated_data['Predicted_Price'] = aggregated_data['Predicted_Price'].apply(lambda x: f"${x:,.2f}")
-    
+    plot_predictions(aggregated_data)
     return aggregated_data
 
 # Example usage
-start_date = '2024-08-01'
-range_months = 24  # Predict for the next 24 months
-bedrooms = [3] * range_months  # Assume 3 bedrooms for each month
-bathrooms = [2] * range_months  # Assume 2 bathrooms for each month
-property_type = 'CONDO'  # User-selected property type (either 'CONDO' or 'RESI')
 
-predictions = get_prediction(start_date, range_months, bedrooms, bathrooms, property_type)
-print(predictions)
+@app.get("/xgboost")
+def api():
+    start_date = '2024-08-01'
+    range_months = 24  # Predict for the next 24 months
+    bedrooms = [3] * range_months  # Assume 3 bedrooms for each month
+    bathrooms = [2] * range_months  # Assume 2 bathrooms for each month
+    property_type = 'CONDO'  # User-selected property type (either 'CONDO' or 'RESI')
+    get_prediction(start_date, range_months, bedrooms, bathrooms, property_type)
+    return send_file("../../result/n_beats/predictions.png")
+
+if __name__ == '__main__':
+   app.run()
 

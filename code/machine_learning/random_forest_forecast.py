@@ -79,10 +79,10 @@ def prediction(start_date, range_dates, bedrooms=1, bathrooms=1):
 
 
 
-@app.get("/model1")
+@app.get("/random-forest-forecast")
 def api():
     prediction(0, 0)
-    return send_file("C:/Users/songl/Desktop/housing hub/HousingHub/result/random_forest_forecast/acutals_vs_predictions.png")
+    return send_file("../../result/random_forest_forecast/acutals_vs_predictions.png")
 
 if __name__ == '__main__':
    app.run()

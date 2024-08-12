@@ -10,6 +10,10 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 from nbeats_pytorch.model import NBeatsNet
+from flask import Flask
+from flask import send_file
+
+app = Flask(__name__)
 
 # Load your data
 input_path = "data/mixed_level/700_feature_engineer.csv"

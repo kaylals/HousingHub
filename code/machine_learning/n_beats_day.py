@@ -25,6 +25,15 @@ pattern = re.compile(r'^Type_\d+$')
 columns_to_drop = [col for col in data.columns if pattern.match(col)]
 data = data.drop(columns=columns_to_drop)
 
+conditions = [
+    data['Type_COND'] == 1,
+    data['Type_RESI'] == 1
+]
+
+choices = ['condo', 'residential']
+
+data['type'] = np.select(conditions, choices)
+
 # Save the modified DataFrame back to CSV if needed
 data.to_csv('data/cleaned_type_feature_engineer.csv', index=False)
 
@@ -354,7 +363,7 @@ model.eval()
 
 
 # Define the prediction function
-def get_prediction(start_date, range_dates, bedrooms, bathrooms):
+def get_prediction(start_date, range_dates, bedrooms, bathrooms, type):
     # Ensure range_dates is within the model's capability
     if range_dates > 30:
         raise ValueError("range_dates cannot exceed 30 days")
@@ -412,20 +421,22 @@ start_date = "2023-08-01"  # Replace with your desired start date
 range_dates = 15           # Replace with the desired range in days (up to 30)
 bedrooms = 3
 bathrooms = 2
+type = 'cond'
 
-dates, log_prices, prices = get_prediction(start_date, range_dates, bedrooms, bathrooms)
-print(type(dates))
+dates, log_prices, prices = get_prediction(start_date, range_dates, bedrooms, bathrooms, type)
 
 
-from tabulate import tabulate
-def print_predictions_table(dates, log_prices, prices):
-    # Combine the lists into a table
-    table = list(zip(dates, log_prices, prices))
+
+
+# from tabulate import tabulate
+# def print_predictions_table(dates, log_prices, prices):
+#     # Combine the lists into a table
+#     table = list(zip(dates, log_prices, prices))
     
-    # Define the headers for the table
-    headers = ["Date", "Log Price", "Price"]
+#     # Define the headers for the table
+#     headers = ["Date", "Log Price", "Price"]
     
-    # Print the table
-    print(tabulate(table, headers=headers, tablefmt="grid"))
+#     # Print the table
+#     print(tabulate(table, headers=headers, tablefmt="grid"))
 
-print_predictions_table(dates, log_prices, prices)
+# print_predictions_table(dates, log_prices, prices)

@@ -29,11 +29,17 @@ def create_lagged_features(df, lags, target):
     df.dropna(inplace=True)
     return df
 
-def prediction(start_date, range_dates, bedrooms=1, bathrooms=1):
+def prediction(start_date, range_dates, bedrooms, bathrooms, property_type):
     # Create a sample time series data as a DataFrame
     data = pd.read_csv('data/cleaned_type_feature_engineer.csv', parse_dates=True)
     data = data.sort_index()
     data = data.loc[(data['Bds'] == bedrooms) & data['Bths'] == bathrooms] 
+    if property_type == "CONDO":
+        data = data.loc[data['Type_COND'] == 1]
+    elif property_type == "RENT":
+        data = data.loc[data['Type_RENT'] == 1]
+    elif property_type == "RESI":
+        data = data.loc[data['Type_RESI'] == 1]
 
     # Selecting multiple features (replace with your actual column names)
     features = list(data.columns)
@@ -81,7 +87,12 @@ def prediction(start_date, range_dates, bedrooms=1, bathrooms=1):
 
 @app.get("/random-forest-forecast")
 def api():
-    prediction(0, 0)
+    start_date = '2024-08-01'
+    range_months = 24
+    bedrooms = 1
+    bathrooms = 1
+    property_type = "CONDO"
+    prediction(0, 0, bedrooms, bathrooms, property_type)
     return send_file("../../result/random_forest_forecast/acutals_vs_predictions.png")
 
 if __name__ == '__main__':

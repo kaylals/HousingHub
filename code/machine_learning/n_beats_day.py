@@ -32,7 +32,8 @@ conditions = [
 
 choices = [0, 1]
 
-data['type'] = np.select(conditions, choices, default=None)
+data['type'] = np.select(conditions, choices, default=0)
+data = data.drop(columns=['Type_COND', 'Type_RESI', 'Type_RENT'])
 
 # Save the modified DataFrame back to CSV if needed
 data.to_csv('data/cleaned_type_feature_engineer.csv', index=False)
@@ -169,7 +170,7 @@ class EarlyStopping:
 
 early_stopping = EarlyStopping(patience=10, min_delta=0.001)
 
-@conditional_run(run_model=False)
+@conditional_run(run_model=True)
 def train_model():
     # Training loop
     train_losses = []
@@ -421,7 +422,7 @@ start_date = "2023-08-01"  # Replace with your desired start date
 range_dates = 15           # Replace with the desired range in days (up to 30)
 bedrooms = 3
 bathrooms = 2
-type = 'cond'
+type = 'CONDO'
 
 dates, log_prices, prices = get_prediction(start_date, range_dates, bedrooms, bathrooms, type)
 

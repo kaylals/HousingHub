@@ -1,18 +1,24 @@
 import os
 import pandas as pd
+import matplotlib
+import datetime
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
-from flask import Flask
-from flask import send_file
+from flask import Flask, send_file
+from flask_cors import CORS
+from flask import Flask, send_file, request, jsonify
+import logging
 
+logging.basicConfig(level=logging.INFO)
+ 
 app = Flask(__name__)
-
-def plot_predictions(results, n_forecast=60):
+CORS(app)
+ 
+def plot_predictions(results, n_forecast):
     plt.figure(figsize=(12, 6))
-    plt.plot(results.index, results['Actual'], label='Actual Log Price')
-    plt.plot(results.index, results['Predicted'], label='Predicted Log Price', linestyle='--')
+    plt.plot(results.index, results['Predicted'], label='Predicted Log Price')
     plt.title('Log Price Predictions vs Actual')
     plt.xlabel(f'Last {n_forecast} days')
     plt.ylabel('Log Price')
@@ -20,7 +26,8 @@ def plot_predictions(results, n_forecast=60):
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.savefig(os.path.join("result/random_forest_forecast", 'acutals_vs_predictions.png'))
-
+    plt.close()
+ 
 # Create lagged features
 def create_lagged_features(df, lags, target):
     df = df.copy()
@@ -28,16 +35,19 @@ def create_lagged_features(df, lags, target):
         df[f'lag_{lag}'] = df[target].shift(lag)
     df.dropna(inplace=True)
     return df
-
-def prediction(start_date, range_dates, bedrooms, bathrooms, property_type):
+ 
+def prediction(start_date, end_date, bedrooms, bathrooms, property_type):
     # Create a sample time series data as a DataFrame
     data = pd.read_csv('data/cleaned_type_feature_engineer.csv', parse_dates=True)
-    data = data.sort_index()
-    data = data.loc[(data['Bds'] == bedrooms) & data['Bths'] == bathrooms] 
+    date = []
+    for i in range(len(data)):
+        x = datetime.datetime.strftime(datetime.datetime(data['Year'].loc[i], data['Month'].loc[i], data['Day'].loc[i]), "%Y-%m/%d")
+        date.append(x)
+    data["Date"] = date
+    data = data.sort_values(by=["Date"])
+    data = data.loc[(data['Bds'] == bedrooms) & data['Bths'] == bathrooms & (data['Date'] >= start_date) & (data['Date'] <= end_date)] 
     if property_type == "CONDO":
         data = data.loc[data['Type_COND'] == 1]
-    elif property_type == "RENT":
-        data = data.loc[data['Type_RENT'] == 1]
     elif property_type == "RESI":
         data = data.loc[data['Type_RESI'] == 1]
 
@@ -53,7 +63,8 @@ def prediction(start_date, range_dates, bedrooms, bathrooms, property_type):
     features.remove('Agg_Median Percent of Last Original Price')
     features.remove('Price_Per_SF')
     features.remove('Price_per_Bedroom')
-    target = ['Log Price']
+    features.remove('Date')
+    target = 'Log Price'
 
     
     # Parameters
@@ -80,20 +91,28 @@ def prediction(start_date, range_dates, bedrooms, bathrooms, property_type):
     mse = mean_squared_error(y_test, y_pred)
     print(f'Mean Squared Error: {mse}')
 
-    results = pd.DataFrame({'Actual': y_test.flatten(), 'Predicted': y_pred})
-    plot_predictions(results)
+    results = pd.DataFrame({'Predicted': y_pred})
+    plot_predictions(results, n_forecast)
 
-
-
-@app.get("/random-forest-forecast")
+@app.post("/random-forest-forecast")
 def api():
-    start_date = '2024-08-01'
-    range_months = 24
-    bedrooms = 1
-    bathrooms = 1
-    property_type = "CONDO"
-    prediction(0, 0, bedrooms, bathrooms, property_type)
-    return send_file("../../result/random_forest_forecast/acutals_vs_predictions.png")
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'Invalid JSON data'}), 400
+
+    start_date = data.get('startDate')
+    end_date = data.get('endDate')
+    bedrooms = data.get('bedrooms')
+    bathrooms = data.get('bathrooms')
+    property_type = data.get('type')
+
+    result, status_code = prediction(start_date, end_date, bedrooms, bathrooms, property_type), 200
+    
+    if status_code == 200:
+        return send_file("../../result/random_forest_forecast/acutals_vs_predictions.png"), 200
+    
+    return jsonify(result), status_code
 
 if __name__ == '__main__':
    app.run()

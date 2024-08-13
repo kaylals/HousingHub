@@ -5,11 +5,14 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import joblib
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from flask import Flask
-from flask import send_file
+from flask import Flask, send_file, request, jsonify
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 # Set a random seed for reproducibility
 RANDOM_SEED = 42
@@ -47,9 +50,10 @@ def plot_predictions(results):
     plt.xlabel(f'Months')
     plt.ylabel('Log Price')
     plt.legend()
-    plt.xticks(rotation=45)
+    #plt.xticks(rotation=45)
     plt.tight_layout()
     plt.savefig(os.path.join("result/n_beats", 'predictions.png'))
+    plt.close()  # 确保图像资源被释放
 
 # Define the function to get predictions
 def get_prediction(start_date, range_months, bedrooms, bathrooms, property_type):
@@ -65,14 +69,9 @@ def get_prediction(start_date, range_months, bedrooms, bathrooms, property_type)
     
     if property_type == 'CONDO':
         type_cond = 1
-    else:
-        type_cond = 0
     if property_type == 'RESI':
         type_resi = 1
-    else:
-         type_resi = 0
 
-    
     # Create a DataFrame for future dates with the provided features
     future_data = pd.DataFrame({
         'Bds': bedrooms,
@@ -132,18 +131,26 @@ def get_prediction(start_date, range_months, bedrooms, bathrooms, property_type)
     plot_predictions(aggregated_data)
     return aggregated_data
 
-# Example usage
-
-@app.get("/xgboost")
+@app.post("/xgboost")
 def api():
-    start_date = '2024-08-01'
-    range_months = 24  # Predict for the next 24 months
-    bedrooms = [3] * range_months  # Assume 3 bedrooms for each month
-    bathrooms = [2] * range_months  # Assume 2 bathrooms for each month
-    property_type = 'CONDO'  # User-selected property type (either 'CONDO' or 'RESI')
-    get_prediction(start_date, range_months, bedrooms, bathrooms, property_type)
-    return send_file("../../result/n_beats/predictions.png")
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'Invalid JSON data'}), 400
+    
+    start_date = data.get('startDate')
+    # end_date = data.get('endDate')
+    range_months = data.get('range') / 30  # Predict for the next 24 months
+    bedrooms = data.get('bedrooms') * range_months  # Assume 3 bedrooms for each month
+    bathrooms = data.get('bathrooms') * range_months  # Assume 2 bathrooms for each month
+    property_type = data.get('type')  # User-selected property type (either 'CONDO' or 'RESI')
+
+    result, status_code = get_prediction(start_date, range_months, bedrooms, bathrooms, property_type), 200
+    
+    if status_code == 200:
+        return send_file("../../result/n_beats/predictions.png")
+    
+    return jsonify(result), status_code
 
 if __name__ == '__main__':
    app.run()
-

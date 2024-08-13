@@ -10,6 +10,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from flask import Flask, send_file, request, jsonify
 from flask_cors import CORS
+from io import BytesIO
+import matplotlib.ticker as ticker
+
+
 
 app = Flask(__name__)
 CORS(app)
@@ -19,11 +23,11 @@ RANDOM_SEED = 42
 np.random.seed(RANDOM_SEED)
 
 # Load the trained model
-model_filename = 'code/machine_learning/best_xgboost_model.pkl'
+model_filename = 'best_xgboost_model.pkl'
 best_xg_reg = joblib.load(model_filename)
 
 # Load the dataset to get mean values for missing features
-df = pd.read_csv('data/mixed_level/700_feature_engineer.csv', low_memory=False)
+df = pd.read_csv('../../data/mixed_level/700_feature_engineer.csv', low_memory=False)
 df = df.apply(pd.to_numeric, errors='coerce')
 df.fillna(df.mean(), inplace=True)
 
@@ -44,16 +48,30 @@ target = 'Log Price'
 features = df_reduced.columns[df_reduced.columns != target]
 
 def plot_predictions(results):
+     # Ensure that the 'Year-Month' is treated as a categorical variable
+    results['Year-Month'] = results['Year-Month'].astype(str)
+    
+    # Convert 'Predicted_Price' to a float for plotting
+    results['Predicted_Price'] = results['Predicted_Price'].replace('[\$,]', '', regex=True).astype(float)
+
     plt.figure(figsize=(12, 6))
-    plt.plot(results.index, results['Predicted_Price'], label='Predicted Log Price')
-    plt.title('Log Price Predictions')
-    plt.xlabel(f'Months')
-    plt.ylabel('Log Price')
-    plt.legend()
-    #plt.xticks(rotation=45)
+    plt.plot(results['Year-Month'], results['Predicted_Price'], marker='o', label='Predicted Price')
+    plt.title('Predicted Property Prices Over Time')
+    plt.xlabel('Year-Month')
+    plt.ylabel('Price (USD)')
+    plt.xticks(rotation=45)  # Rotate x-axis labels for better readability
+    plt.grid(True)
+
+    # Format the y-axis to show the price in dollar format
+    plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'${int(x):,}'))
+
     plt.tight_layout()
-    plt.savefig(os.path.join("result/n_beats", 'predictions.png'))
-    plt.close()  # 确保图像资源被释放
+
+    # Save the plot
+    save_dir = os.path.join(os.path.dirname(__file__), "result", "xgboost")
+    os.makedirs(save_dir, exist_ok=True)
+    plt.savefig(os.path.join(save_dir, 'predictions.png'))
+    plt.close()
 
 # Define the function to get predictions
 def get_prediction(start_date, range_months, bedrooms, bathrooms, property_type):
@@ -140,15 +158,17 @@ def api():
     
     start_date = data.get('startDate')
     # end_date = data.get('endDate')
-    range_months = data.get('range') / 30  # Predict for the next 24 months
-    bedrooms = data.get('bedrooms') * range_months  # Assume 3 bedrooms for each month
-    bathrooms = data.get('bathrooms') * range_months  # Assume 2 bathrooms for each month
+    range_months = int(data.get('range') / 30)   # Predict for the next 24 months
+    bedrooms = int(data.get('bedrooms')) * range_months  # Assume 3 bedrooms for each month
+    bathrooms = int(data.get('bathrooms')) * range_months  # Assume 2 bathrooms for each month
     property_type = data.get('type')  # User-selected property type (either 'CONDO' or 'RESI')
 
     result, status_code = get_prediction(start_date, range_months, bedrooms, bathrooms, property_type), 200
     
     if status_code == 200:
-        return send_file("../../result/n_beats/predictions.png")
+        # Use an absolute path
+        file_path = os.path.join(os.path.dirname(__file__), "result", "xgboost", "predictions.png")
+        return send_file(file_path, mimetype='image/png')
     
     return jsonify(result), status_code
 

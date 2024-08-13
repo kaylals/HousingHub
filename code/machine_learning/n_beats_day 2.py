@@ -29,12 +29,22 @@ pattern = re.compile(r'^Type_\d+$')
 columns_to_drop = [col for col in data.columns if pattern.match(col)]
 data = data.drop(columns=columns_to_drop)
 
-# Save the modified DataFrame back to CSV if needed
-data.to_csv('data/cleaned_type_feature_engineer.csv', index=False)
+# # Save the modified DataFrame back to CSV if needed
+# data.to_csv('data/cleaned_type_feature_engineer.csv', index=False)
 
 # Separate features and target
 y = data['Log Price']
 X = data.drop('Log Price', axis=1)
+
+
+conditions = [
+    data['Type_COND'] == 1,
+    data['Type_RESI'] == 1
+]
+
+choices = ['CONDO', 'RESI']
+
+data['type'] = np.select(conditions, choices)
 
 # Scale the data
 scaler = MinMaxScaler()
@@ -358,7 +368,7 @@ model.eval()
 
 
 # Define the prediction function
-def get_prediction(start_date, range_dates, bedrooms, bathrooms):
+def get_prediction(start_date, range_dates, bedrooms, bathrooms, type):
     # Ensure range_dates is within the model's capability
     if range_dates > 30:
         raise ValueError("range_dates cannot exceed 30 days")
@@ -371,7 +381,8 @@ def get_prediction(start_date, range_dates, bedrooms, bathrooms):
     
     # Filter the data based on user input for bedrooms and bathrooms
     filtered_data = X_scaled[(X_scaled['Bds'] == bedrooms) & 
-                             (X_scaled['Bths'] == bathrooms)]
+                             (X_scaled['Bths'] == bathrooms) &
+                             X_scaled['type'].str.contains(type)]
     
     # Select data for the input window (90 days before start_date)
     input_start = start_date - pd.Timedelta(days=90)
@@ -407,29 +418,31 @@ def get_prediction(start_date, range_dates, bedrooms, bathrooms):
     # Select only the requested range of dates
     forecast_df = forecast_df.loc[forecast_df['Date'].between(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))]
 
-    
+    plot_predictions(forecast_df, range_dates)
     # Return the lists of dates, log prices, and prices
     return forecast_df['Date'].tolist(), forecast_df['Predicted Log Price'].tolist(), forecast_df['Predicted Price'].tolist()
 
-# Example usage
-start_date = "2023-08-01"  # Replace with your desired start date
-range_dates = 15           # Replace with the desired range in days (up to 30)
-bedrooms = 3
-bathrooms = 2
+def plot_predictions(results, days):
+    plt.figure(figsize=(12, 6))
+    plt.plot(results['Predicted Price'], label='Predicted Price')
+    plt.title('Price Predictions')
+    plt.xlabel(f'Last {days} days')
+    plt.ylabel('Price')
+    plt.legend()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig(os.path.join("result/n_beats", f'{days}_predicted.png'))
 
-dates, log_prices, prices = get_prediction(start_date, range_dates, bedrooms, bathrooms)
 
+@app.get("/random-forest-forecast")
+def api():
+    start_date = '2024-01-01'
+    range_days = 15
+    bedrooms = 1
+    bathrooms = 1
+    property_type = "CONDO"
+    get_prediction(start_date, range_days, bedrooms, bathrooms, property_type)
+    return send_file("../../result/random_forest_forecast/acutals_vs_predictions.png")
 
-
-from tabulate import tabulate
-def print_predictions_table(dates, log_prices, prices):
-    # Combine the lists into a table
-    table = list(zip(dates, log_prices, prices))
-    
-    # Define the headers for the table
-    headers = ["Date", "Log Price", "Price"]
-    
-    # Print the table
-    print(tabulate(table, headers=headers, tablefmt="grid"))
-
-print_predictions_table(dates, log_prices, prices)
+if __name__ == '__main__':
+   app.run()

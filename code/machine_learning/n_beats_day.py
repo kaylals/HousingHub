@@ -26,13 +26,13 @@ columns_to_drop = [col for col in data.columns if pattern.match(col)]
 data = data.drop(columns=columns_to_drop)
 
 conditions = [
-    data['Type_COND'] == 1,
-    data['Type_RESI'] == 1
+    (data['Type_COND'] == 1),
+    (data['Type_RESI'] == 1)
 ]
 
-choices = ['condo', 'residential']
+choices = [0, 1]
 
-data['type'] = np.select(conditions, choices)
+data['type'] = np.select(conditions, choices, default=None)
 
 # Save the modified DataFrame back to CSV if needed
 data.to_csv('data/cleaned_type_feature_engineer.csv', index=False)

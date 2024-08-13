@@ -32,9 +32,9 @@ conditions = [
     data['Type_RESI'] == 1
 ]
 
-choices = ['CONDO', 'RESI']
+choices = [0, 1]
 
-data['type'] = np.select(conditions, choices)
+data['type'] = np.select(conditions, choices, default=0)
 
 # Scale the data
 scaler = MinMaxScaler()
@@ -76,6 +76,16 @@ val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
+
+class NBeatsNetWithDropout(NBeatsNet):
+    def __init__(self, *args, **kwargs):
+        super(NBeatsNetWithDropout, self).__init__(*args, **kwargs)
+        self.dropout = nn.Dropout(p=0.2)  # Dropout with 20% probability
+
+    def forward(self, x):
+        backcast, forecast = super(NBeatsNetWithDropout, self).forward(x)
+        forecast = self.dropout(forecast)  # Apply dropout to the forecast
+        return backcast, forecast
 
 # Load the saved model
 model = NBeatsNetWithDropout(
@@ -123,11 +133,13 @@ def get_prediction(start_date, range_dates=15, bedrooms=2, bathrooms=2, type='CO
     
     # Calculate end_date based on the range of days
     end_date = start_date + pd.Timedelta(days=range_dates-1)
-    
+    type_mapping = {"condo": 0, "resi": 1}
+    mapped_type = type_mapping.get(type)
+
     # Filter the data based on user input for bedrooms and bathrooms
     filtered_data = X_scaled[(X_scaled['Bds'] == bedrooms) & 
                              (X_scaled['Bths'] == bathrooms) &
-                             X_scaled['type'].str.contains(type)]
+                             X_scaled['type'] == mapped_type]
     
     # Select data for the input window (90 days before start_date)
     input_start = start_date - pd.Timedelta(days=90)

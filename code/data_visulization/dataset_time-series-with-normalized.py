@@ -5,7 +5,7 @@ from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 
 # Read the combined normalized CSV file
-file_path = './combined_df_normalized.csv'
+file_path = 'data/aggregated_700_normalized.csv'
 data = pd.read_csv(file_path)
 
 # Convert the 'Date' column to datetime format

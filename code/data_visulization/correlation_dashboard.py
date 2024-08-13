@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 
 # Define the path to the normalized CSV file
-normalized_csv_path = './combined_df_normalized.csv'
+normalized_csv_path = 'data/aggregated_700_normalized.csv'
 
 # Read the normalized data from the CSV file
 data = pd.read_csv(normalized_csv_path)

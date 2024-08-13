@@ -5,7 +5,7 @@ from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 
 # Define the folder path where the CSV files are located
-folder_path = './data'
+folder_path = './data/aggregated_level'
 
 # Dictionary to store the dataframes
 dataframes = {}

@@ -5,7 +5,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Load the dataset
-df = pd.read_csv('../data/mixed_level/700_feature_engineer.csv', low_memory=False)
+df = pd.read_csv('data/mixed_level/700_feature_engineer.csv', low_memory=False)
 
 # Handle infinite values by replacing them with NaN, then drop any rows with NaN values
 df = df.replace([np.inf, -np.inf], np.nan).dropna()

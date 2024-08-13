@@ -12,29 +12,19 @@ import matplotlib.pyplot as plt
 from nbeats_pytorch.model import NBeatsNet
 from flask import Flask
 from flask import send_file
+import sys
 
 app = Flask(__name__)
 
 # Load your data
-input_path = "'data/cleaned_type_feature_engineer.csv"
+input_path = "cleaned_type_feature_engineer.csv"
 output_folder = "result/n_beats"
 
 data = pd.read_csv(input_path)
 
-
 # Separate features and target
 y = data['Log Price']
 X = data.drop('Log Price', axis=1)
-
-
-conditions = [
-    data['Type_COND'] == 1,
-    data['Type_RESI'] == 1
-]
-
-choices = [0, 1]
-
-data['type'] = np.select(conditions, choices, default=0)
 
 # Scale the data
 scaler = MinMaxScaler()
@@ -121,7 +111,6 @@ def calculate_metrics(y_true, y_pred):
 model.load_state_dict(torch.load('best_nbeats_model_by_day.pth'))
 model.eval()
 
-
 # Define the prediction function
 def get_prediction(start_date, range_dates=15, bedrooms=2, bathrooms=2, type='CONDO'):
     # Ensure range_dates is within the model's capability
@@ -133,7 +122,7 @@ def get_prediction(start_date, range_dates=15, bedrooms=2, bathrooms=2, type='CO
     
     # Calculate end_date based on the range of days
     end_date = start_date + pd.Timedelta(days=range_dates-1)
-    type_mapping = {"condo": 0, "resi": 1}
+    type_mapping = {"CONDO": 0, "RESI": 1}
     mapped_type = type_mapping.get(type)
 
     # Filter the data based on user input for bedrooms and bathrooms
@@ -223,9 +212,13 @@ def api():
         file_name = f"predictions_nbeats_{next_number}.png"
         file_path = os.path.join(output_dir, file_name)
         
-        return send_file(file_path, mimetype='image/png')
+        if os.path.isfile(file_path):
+            return send_file(file_path, mimetype='image/png')
+        else:
+            return jsonify({'error': 'Image not produced'}), 500
     
-    return jsonify(result), status_code
+    else:
+        return jsonify({'error': 'Prediction failed'}), 500
 
 if __name__ == '__main__':
    app.run()

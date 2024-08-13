@@ -23,33 +23,32 @@ const StyledPaper = styled(Paper)({
 
 type Feature = {
   startDate: Dayjs | null;
-  rangeDate: string;
+  endDate: Dayjs | null;
   type: string;
   bedrooms: number;
   bathrooms: number;
 };
 
 const App: React.FC = () => {
-  const api = `http://127.0.0.1:5000/model1`;
   const [features, setFeatures] = useState<Feature>({
     startDate: dayjs(),
-    rangeDate: "",
+    endDate: dayjs(),
     type: "",
     bedrooms: 0,
     bathrooms: 0
   });
   const [url, setUrl] = useState<string | null>(null);
 
-  const handleDateChange = (newValue: Dayjs | null) => {
+  const handleDateChange = (dateType: 'startDate' | 'endDate', newValue: Dayjs | null) => {
     setFeatures((prevFeatures) => ({
       ...prevFeatures,
-      startDate: newValue,
+      [dateType]: newValue,
     }));
   };
 
   const types = [
-    { value: "Condo", label: 'condo' },
-    { value: "Residential", label: 'resi' }
+    { value: "CONDO", label: 'condo' },
+    { value: "RESI", label: 'resi' }
   ];
 
   const rooms = [];
@@ -58,6 +57,9 @@ const App: React.FC = () => {
   }
 
   const handleSearch = () => {
+    const api = `http://127.0.0.1:5000/xgboost`;
+    // /xgboost
+    // /random-forest-forecast
     fetch(api)
       .then(response => response.blob()) // 将响应转换为 Blob 对象
       .then(blob => {
@@ -71,13 +73,38 @@ const App: React.FC = () => {
 
   const handleSubmit = () => {
     const requestData = {
-      startDate: features.startDate,
-      rangeDate: features.rangeDate,
+      startDate: features.startDate?.format('YYYY-MM-DD'),
+      endDate: features.endDate?.format('YYYY-MM-DD'),
+      range: 0,
       type: features.type,
       bedrooms: features.bedrooms,
       bathrooms: features.bathrooms,
     };
+    const {startDate, endDate} = requestData;
+    if (startDate && endDate) {
+      const startDateObj = dayjs(startDate);
+      const endDateObj = dayjs(endDate);    
+      
+      const daysDifference = endDateObj.diff(startDateObj, 'day');
+      requestData.range = daysDifference;
+    }
     console.log(requestData);
+    const api = `http://127.0.0.1:5000/xgboost`;
+    fetch(api, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData) // Ensure the key matches what your backend expects
+      })
+      .then(response => response.blob()) // 将响应转换为 Blob 对象
+      .then(blob => {
+        const imageUrl = URL.createObjectURL(blob); // 创建一个对象URL用于显示图片
+        setUrl(imageUrl); // 假设 setMovies 用来存储图片URL
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
   }
 
   return (
@@ -90,17 +117,18 @@ const App: React.FC = () => {
                 <DatePicker
                   label="Start Date"
                   value={features.startDate}
-                  onChange={handleDateChange}
+                  onChange={(newValue) => handleDateChange('startDate', newValue)}
                 />
               </LocalizationProvider>
             </Grid>
             <Grid item xs={4} md={2}>
-              <TextField
-                label="Range of Date"
-                value={features.rangeDate}
-                onChange={(event) => setFeatures({ ...features, rangeDate: event.target.value })}
-                fullWidth
-              />
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="End Date"
+                  value={features.endDate}
+                  onChange={(newValue) => handleDateChange('endDate', newValue)}
+                />
+              </LocalizationProvider>
             </Grid>
             <Grid item xs={4} md={2}>
               <CustomDropDown
@@ -130,8 +158,10 @@ const App: React.FC = () => {
               <Button variant="contained" color="primary" style={{ height: '36px' }} onClick={handleSubmit}>
                 Click Me
               </Button>
-              {/* {url && <img src={url} alt="Fetched PNG" />} */}
             </Grid>
+          </Grid>
+          <Grid container spacing={2} style={{ margin: '5px' }}>
+            {url && <img src={url} alt="Fetched PNG" />}
           </Grid>
         </StyledPaper>
       </Grid>

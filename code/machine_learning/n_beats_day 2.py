@@ -28,9 +28,10 @@ output_folder = "result/n_beats"
 data = pd.read_csv(input_path)
 
 data['Price'] = np.exp(data['Log Price'])
-data['Type'] = data['Type_RENT'] + data['Type_COND']
+# data['Type'] = data['Type_RENT'] + data['Type_COND']
 
-columns_to_drop = ['Type_RENT', 'Type_COND', 'Type_RESI', 'Log Price'] 
+# columns_to_drop = ['Type_RENT', 'Type_COND', 'Type_RESI', 'Log Price'] 
+columns_to_drop = ['Log Price'] 
 data = data.drop(columns=columns_to_drop)
 
 # Separate features and target
@@ -57,7 +58,7 @@ class NBeatsNetWithDropout(NBeatsNet):
         super(NBeatsNetWithDropout, self).__init__(*args, **kwargs)
         self.dropout = nn.Dropout(p=0.2)  # Dropout with 20% probability
         # self.sigmoid = nn.Sigmoid()
-        self.scaling_factor = 1000
+        self.scaling_factor = 450
 
     def forward(self, x):
         backcast, forecast = super(NBeatsNetWithDropout, self).forward(x)
@@ -151,14 +152,14 @@ def get_prediction(start_date, range_dates=15, bedrooms=2, bathrooms=2, property
 
     return forecast_df
 
-# # Example usage
-# start_date = "2023-08-01"  # Replace with your desired start date
-# range_dates = 15           # Replace with the desired range in days (up to 30)
-# bedrooms = 3
-# bathrooms = 2
-# forecast_df = get_prediction(start_date, range_dates, bedrooms, bathrooms, 'CONDO')
-# plot_predictions(forecast_df, range_dates, 'forecast.png')
-# sys.exit()
+# Example usage
+start_date = "2023-08-01"  # Replace with your desired start date
+range_dates = 15           # Replace with the desired range in days (up to 30)
+bedrooms = 3
+bathrooms = 2
+forecast_df = get_prediction(start_date, range_dates, bedrooms, bathrooms, 'CONDO')
+plot_predictions(forecast_df, range_dates, 'forecast.png')
+sys.exit()
 
 @app.post("/n-beats-forecast")
 def api():

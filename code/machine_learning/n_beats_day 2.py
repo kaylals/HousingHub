@@ -82,13 +82,14 @@ model = NBeatsNetWithDropout(
 
 model.load_state_dict(torch.load('best_nbeats_model_by_day.pth'))
 model.eval()
-
+import matplotlib.ticker as mticker
 def plot_predictions(results, days, file_path):
     plt.figure(figsize=(12, 6))
     plt.plot(results['Predicted Price'], label='Predicted Price')
     plt.title('Price Predictions')
     plt.xlabel(f'Last {days} days')
-    plt.ylabel('Price')
+    plt.ylabel('Price (in thousands of $)')
+    plt.gca().yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{x/1000:.0f}'))
 
 
     min_price = results['Predicted Price'].min()

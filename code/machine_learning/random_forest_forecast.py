@@ -13,9 +13,6 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
  
-app = Flask(__name__)
-CORS(app)
- 
 def plot_predictions(results, n_forecast):
     plt.figure(figsize=(12, 6))
     plt.plot(results.index, results['Predicted'], label='Predicted Log Price')
@@ -94,8 +91,7 @@ def prediction(start_date, end_date, bedrooms, bathrooms, property_type):
     results = pd.DataFrame({'Predicted': y_pred})
     plot_predictions(results, n_forecast)
 
-@app.post("/random-forest-forecast")
-def api():
+def rf_api():
     data = request.get_json()
     
     if not data:
@@ -107,12 +103,6 @@ def api():
     bathrooms = data.get('bathrooms')
     property_type = data.get('type')
 
-    result, status_code = prediction(start_date, end_date, bedrooms, bathrooms, property_type), 200
+    prediction(start_date, end_date, bedrooms, bathrooms, property_type)
     
-    if status_code == 200:
-        return send_file("../../result/random_forest_forecast/acutals_vs_predictions.png"), 200
-    
-    return jsonify(result), status_code
-
-if __name__ == '__main__':
-   app.run()
+    return send_file("../../result/random_forest_forecast/acutals_vs_predictions.png"), 200

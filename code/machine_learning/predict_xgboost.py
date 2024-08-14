@@ -13,21 +13,18 @@ from flask_cors import CORS
 from io import BytesIO
 import matplotlib.ticker as ticker
 
-
-
-app = Flask(__name__)
-CORS(app)
-
 # Set a random seed for reproducibility
 RANDOM_SEED = 42
 np.random.seed(RANDOM_SEED)
 
 # Load the trained model
-model_filename = 'best_xgboost_model.pkl'
+script_dir = os.path.dirname(__file__)
+model_filename = os.path.join(script_dir, 'best_xgboost_model.pkl')
 best_xg_reg = joblib.load(model_filename)
 
 # Load the dataset to get mean values for missing features
-df = pd.read_csv('../../data/mixed_level/700_feature_engineer.csv', low_memory=False)
+data_filename = os.path.join(script_dir, 'data/mixed_level/700_feature_engineer.csv')
+df = pd.read_csv('data/mixed_level/700_feature_engineer.csv', low_memory=False)
 df = df.apply(pd.to_numeric, errors='coerce')
 df.fillna(df.mean(), inplace=True)
 
@@ -52,7 +49,8 @@ def plot_predictions(results):
     results['Year-Month'] = results['Year-Month'].astype(str)
     
     # Convert 'Predicted_Price' to a float for plotting
-    results['Predicted_Price'] = results['Predicted_Price'].replace('[\$,]', '', regex=True).astype(float)
+    # results['Predicted_Price'] = results['Predicted_Price'].replace('[\$,]', '', regex=True).astype(float)
+    results['Predicted_Price'] = results['Predicted_Price'].replace(r'[\$,]', '', regex=True).astype(float)
 
     plt.figure(figsize=(12, 6))
     plt.plot(results['Year-Month'], results['Predicted_Price'], marker='o', label='Predicted Price')
@@ -149,8 +147,7 @@ def get_prediction(start_date, range_months, bedrooms, bathrooms, property_type)
     plot_predictions(aggregated_data)
     return aggregated_data
 
-@app.post("/xgboost")
-def api():
+def xg_api():
     data = request.get_json()
     
     if not data:
@@ -171,6 +168,3 @@ def api():
         return send_file(file_path, mimetype='image/png')
     
     return jsonify(result), status_code
-
-if __name__ == '__main__':
-   app.run()

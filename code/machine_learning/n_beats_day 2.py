@@ -82,14 +82,14 @@ model = NBeatsNetWithDropout(
 
 model.load_state_dict(torch.load('best_nbeats_model_by_day.pth'))
 model.eval()
-import matplotlib.ticker as mticker
+import matplotlib.ticker as ticker
 def plot_predictions(results, days, file_path):
     plt.figure(figsize=(12, 6))
     plt.plot(results['Predicted Price'], label='Predicted Price')
-    plt.title('Price Predictions')
-    plt.xlabel(f'Last {days} days')
-    plt.ylabel('Price (in thousands of $)')
-    plt.gca().yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{x/1000:.0f}'))
+    plt.title('Predicted Property Prices Over Time')
+    plt.xlabel('Year-Month-Day')
+    plt.ylabel('Price (USD)')
+    plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'${int(x):,}'))
 
 
     min_price = results['Predicted Price'].min()
@@ -137,9 +137,6 @@ def get_prediction(start_date, range_dates=15, bedrooms=2, bathrooms=2, property
     # Get the prediction
     with torch.no_grad():
         _, forecast = model(model_input)
-    
-    # Convert the forecast back to the original scale
-    print(forecast)
     
     # Create a DataFrame with both forecasts
     forecast_dates = pd.date_range(start=start_date, periods=30)

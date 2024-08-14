@@ -19,9 +19,10 @@ output_folder = "result/n_beats"
 data = pd.read_csv(input_path)
 
 data['Price'] = np.exp(data['Log Price'])
-data['Type'] = data['Type_RENT'] + data['Type_COND']
+# data['Type'] = data['Type_RENT'] + data['Type_COND']
 
-columns_to_drop = ['Type_RENT', 'Type_COND', 'Type_RESI', 'Log Price'] 
+# columns_to_drop = ['Type_RENT', 'Type_COND', 'Type_RESI', 'Log Price'] 
+columns_to_drop = ['Log Price'] 
 data = data.drop(columns=columns_to_drop)
 
 # Separate features and target
@@ -83,7 +84,7 @@ class NBeatsNetWithDropout(NBeatsNet):
         backcast, forecast = super(NBeatsNetWithDropout, self).forward(x)
         forecast = self.dropout(forecast)  # Apply dropout to the forecast
         # forecast = self.sigmoid(forecast)
-        forecast = forecast * self.scaling_factor
+        # forecast = forecast * self.scaling_factor
         return backcast, forecast
 
 # Load the saved model

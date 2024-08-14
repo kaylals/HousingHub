@@ -1,27 +1,32 @@
 import os
 import pandas as pd
+import matplotlib
+import datetime
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
-from flask import Flask
-from flask import send_file
+from flask import Flask, send_file
+from flask_cors import CORS
+from flask import Flask, send_file, request, jsonify
+import logging
 
-app = Flask(__name__)
-
+logging.basicConfig(level=logging.INFO)
+ 
 def plot_predictions(results, n_forecast):
     plt.figure(figsize=(12, 6))
-    plt.plot(results['Predicted'], label='Predicted Price')
-    plt.title('Price Predictions')
+    plt.plot(results.index, results['Predicted'], label='Predicted Log Price')
+    plt.title('Log Price Predictions vs Actual')
     plt.xlabel(f'Last {n_forecast} days')
     plt.ylabel('Price')
     plt.legend()
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.savefig(os.path.join("result/random_forest_forecast", 'acutals_vs_predictions.png'))
-
+    plt.close()
+ 
 # Create lagged features
 def create_lagged_features(df, lags, target):
     df = df.copy()
@@ -29,8 +34,8 @@ def create_lagged_features(df, lags, target):
         df[f'lag_{lag}'] = df[target].shift(lag)
     df.dropna(inplace=True)
     return df
-
-def prediction(start_date, range_dates, bedrooms, bathrooms, property_type):
+ 
+def prediction(start_date, end_date, bedrooms, bathrooms, property_type):
     # Create a sample time series data as a DataFrame
     data = pd.read_csv('data/cleaned_type_feature_engineer.csv', parse_dates=True)
     date = []
@@ -39,11 +44,9 @@ def prediction(start_date, range_dates, bedrooms, bathrooms, property_type):
         date.append(x)
     data["Date"] = date
     data = data.sort_values(by=["Date"])
-    data = data.loc[(data['Bds'] == bedrooms) & (data['Bths'] == bathrooms) & (data['Date'] >= start_date)] 
+    data = data.loc[(data['Bds'] == bedrooms) & data['Bths'] == bathrooms & (data['Date'] >= start_date) & (data['Date'] <= end_date)] 
     if property_type == "CONDO":
         data = data.loc[data['Type_COND'] == 1]
-    elif property_type == "RENT":
-        data = data.loc[data['Type_RENT'] == 1]
     elif property_type == "RESI":
         data = data.loc[data['Type_RESI'] == 1]
 
@@ -60,7 +63,7 @@ def prediction(start_date, range_dates, bedrooms, bathrooms, property_type):
     features.remove('Price_Per_SF')
     features.remove('Price_per_Bedroom')
     features.remove('Date')
-    target = ['Log Price']
+    target = 'Log Price'
 
     
     # Parameters
@@ -70,7 +73,7 @@ def prediction(start_date, range_dates, bedrooms, bathrooms, property_type):
     X = data[features].values
     y = data[target].values
 
-    n_forecast = range_dates * 30
+    n_forecast = (datetime.datetime.strptime(end_date, "%Y-%m-%d") - datetime.datetime.strptime(start_date, "%Y-%m-%d")).days
     train_size = -1 - n_forecast
     X_train, X_test = X[:train_size], X[train_size:]
     y_train, y_test = y[:train_size], y[train_size:]
@@ -87,18 +90,21 @@ def prediction(start_date, range_dates, bedrooms, bathrooms, property_type):
     mse = mean_squared_error(y_test, y_pred)
     print(f'Mean Squared Error: {mse}')
 
-    results = pd.DataFrame({'Predicted': np.exp(y_pred)})
+    results = pd.DataFrame({'Predicted': y_pred})
     plot_predictions(results, n_forecast)
 
-@app.get("/random-forest-forecast")
-def api():
-    start_date = '2001-01-01'
-    range_months = 2
-    bedrooms = 1
-    bathrooms = 1
-    property_type = "CONDO"
-    prediction(start_date, range_months, bedrooms, bathrooms, property_type)
-    return send_file("../../result/random_forest_forecast/acutals_vs_predictions.png")
+def rf_api():
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'Invalid JSON data'}), 400
 
-if __name__ == '__main__':
-   app.run()
+    start_date = data.get('startDate')
+    end_date = data.get('endDate')
+    bedrooms = data.get('bedrooms')
+    bathrooms = data.get('bathrooms')
+    property_type = data.get('type')
+
+    prediction(start_date, end_date, bedrooms, bathrooms, property_type)
+    
+    return send_file("../../result/random_forest_forecast/acutals_vs_predictions.png"), 200

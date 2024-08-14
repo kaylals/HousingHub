@@ -83,14 +83,18 @@ model = NBeatsNetWithDropout(
 model.load_state_dict(torch.load('best_nbeats_model_by_day.pth'))
 model.eval()
 import matplotlib.ticker as ticker
-def plot_predictions(results, days, file_path):
+import matplotlib.dates as mdates
+
+def plot_predictions(results, file_path):
     plt.figure(figsize=(12, 6))
-    plt.plot(results['Predicted Price'], label='Predicted Price')
+    plt.plot(results['Date'], results['Predicted Price'], label='Predicted Price')
     plt.title('Predicted Property Prices Over Time')
-    plt.xlabel('Year-Month-Day')
+    plt.xlabel('Next days')
     plt.ylabel('Price (USD)')
     plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'${int(x):,}'))
-
+    # Formatting the x-axis
+    plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
     min_price = results['Predicted Price'].min()
     max_price = results['Predicted Price'].max()
@@ -150,14 +154,14 @@ def get_prediction(start_date, range_dates=15, bedrooms=2, bathrooms=2, property
 
     return forecast_df
 
-# Example usage
-start_date = "2023-08-01"  # Replace with your desired start date
-range_dates = 15           # Replace with the desired range in days (up to 30)
-bedrooms = 3
-bathrooms = 2
-forecast_df = get_prediction(start_date, range_dates, bedrooms, bathrooms, 'CONDO')
-plot_predictions(forecast_df, range_dates, 'forecast.png')
-sys.exit()
+# # Example usage
+# start_date = "2023-08-01"  # Replace with your desired start date
+# range_dates = 15           # Replace with the desired range in days (up to 30)
+# bedrooms = 3
+# bathrooms = 2
+# forecast_df = get_prediction(start_date, range_dates, bedrooms, bathrooms, 'CONDO')
+# plot_predictions(forecast_df, 'forecast.png')
+# sys.exit()
 
 @app.post("/n-beats-forecast")
 def api():

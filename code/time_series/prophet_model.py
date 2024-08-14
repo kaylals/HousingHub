@@ -46,7 +46,7 @@ def analyze_time_series(variable):
     df_prophet = series.reset_index().rename(columns={'Date': 'ds', variable: 'y'})
     model = Prophet(
         yearly_seasonality=True,
-        weekly_seasonality=False,
+        weekly_seasonality=True,
         daily_seasonality=False,
         changepoint_prior_scale=0.5
     )
@@ -64,7 +64,6 @@ def analyze_time_series(variable):
     # Save the model using torch
     torch.save(model, f'{variable}_prophet_model.pth')
 
-# Function to load the model and make predictions
 def predict_inventory(variable, start_year_month, end_year_month):
     # Load the whole model
     model = torch.load(f'{variable}_prophet_model.pth')
@@ -78,8 +77,11 @@ def predict_inventory(variable, start_year_month, end_year_month):
     # Make predictions
     forecast = model.predict(future)
     
-    # Extract predictions as a list of lists with date and predicted value
-    predictions = forecast[['ds', 'yhat']].values.tolist()
+    # Extract predictions with formatted date and rounded value
+    predictions = [
+        [date.strftime('%Y-%m-%d'), round(prediction, 2)]
+        for date, prediction in forecast[['ds', 'yhat']].values.tolist()
+    ]
     
     return predictions
 
@@ -87,3 +89,4 @@ def predict_inventory(variable, start_year_month, end_year_month):
 analyze_time_series('Median Days on Market')
 predictions = predict_inventory('Median Days on Market', '2024-01', '2024-12')
 print(predictions)
+

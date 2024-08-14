@@ -1,19 +1,19 @@
 import pandas as pd
+import numpy as np
+import sys
+df = pd.read_csv('data/mixed_level/700_feature_engineer.csv')
 
+df['Price'] = np.exp(df['Log Price'])
 
-df = pd.read_csv('data/mixed_level/feature_engineer_700.csv')
+month = 1
+year = 2023
+filtered_df = df[df['Year'] == year]
+print(len(filtered_df))
+# Apply multiple conditions and select the price column
+filtered_df = filtered_df[(filtered_df['Bths'] == 2) & (filtered_df['Bds'] == 3)]
 
-# Count all recordings (rows) in the DataFrame
-total_recordings = len(df)
-
-# Alternative method using shape
-# total_recordings = df.shape[0]
-
-print(f"Total number of recordings: {total_recordings}")
-
-# Check for None (NaN) values in each column
-null_count_per_column = df.isnull().sum()
-
-# Filter to only columns with NaN values and display them
-columns_with_nulls = null_count_per_column[null_count_per_column > 0]
-print(columns_with_nulls)
+# Show only the 'price' column
+price_column = filtered_df['Price'].astype(int)
+average_price = price_column.mean()
+print(price_column.tolist())
+print(average_price)

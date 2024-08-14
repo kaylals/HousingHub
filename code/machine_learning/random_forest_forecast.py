@@ -71,7 +71,7 @@ def prediction(start_date, end_date, bedrooms, bathrooms, property_type):
     X = data[features].values
     y = data[target].values
 
-    n_forecast = 60
+    n_forecast = (datetime.datetime.strptime(end_date, "%Y-%m-%d") - datetime.datetime.strptime(start_date, "%Y-%m-%d")).days
     train_size = -1 - n_forecast
     X_train, X_test = X[:train_size], X[train_size:]
     y_train, y_test = y[:train_size], y[train_size:]

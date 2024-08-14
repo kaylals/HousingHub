@@ -127,8 +127,7 @@ def get_prediction(start_date, range_dates=15, bedrooms=2, bathrooms=2, type='CO
 
     # Filter the data based on user input for bedrooms and bathrooms
     filtered_data = X_scaled[(X_scaled['Bds'] == bedrooms) & 
-                             (X_scaled['Bths'] == bathrooms) &
-                             X_scaled['type'] == mapped_type]
+                             (X_scaled['Bths'] == bathrooms)]
     
     # Select data for the input window (90 days before start_date)
     input_start = start_date - pd.Timedelta(days=90)

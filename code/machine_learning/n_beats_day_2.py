@@ -18,8 +18,8 @@ import sys
 
 logging.basicConfig(level=logging.INFO)
 
-app = Flask(__name__)
-CORS(app)
+# app = Flask(__name__)
+# CORS(app)
 
 # Load your data
 input_path = "cleaned_type_feature_engineer.csv"
@@ -28,9 +28,10 @@ output_folder = "result/n_beats"
 data = pd.read_csv(input_path)
 
 data['Price'] = np.exp(data['Log Price'])
-data['Type'] = data['Type_RENT'] + data['Type_COND']
+# data['Type'] = data['Type_RENT'] + data['Type_COND']
 
-columns_to_drop = ['Type_RENT', 'Type_COND', 'Type_RESI', 'Log Price'] 
+# columns_to_drop = ['Type_RENT', 'Type_COND', 'Type_RESI', 'Log Price'] 
+columns_to_drop = ['Log Price'] 
 data = data.drop(columns=columns_to_drop)
 
 # Separate features and target
@@ -57,7 +58,7 @@ class NBeatsNetWithDropout(NBeatsNet):
         super(NBeatsNetWithDropout, self).__init__(*args, **kwargs)
         self.dropout = nn.Dropout(p=0.2)  # Dropout with 20% probability
         # self.sigmoid = nn.Sigmoid()
-        self.scaling_factor = 1000
+        self.scaling_factor = 450
 
     def forward(self, x):
         backcast, forecast = super(NBeatsNetWithDropout, self).forward(x)
@@ -81,14 +82,20 @@ model = NBeatsNetWithDropout(
 
 model.load_state_dict(torch.load('best_nbeats_model_by_day.pth'))
 model.eval()
+import matplotlib.ticker as ticker
+import matplotlib.dates as mdates
 
-def plot_predictions(results, days, file_path):
+def plot_predictions(results, file_path):
     plt.figure(figsize=(12, 6))
-    plt.plot(results['Predicted Price'], label='Predicted Price')
-    plt.title('Price Predictions')
-    plt.xlabel(f'Last {days} days')
-    plt.ylabel('Price')
-
+    results['Date'] = pd.to_datetime(results['Date'])
+    plt.plot(results['Date'], results['Predicted Price'], label='Predicted Price')
+    plt.title('Predicted Property Prices Over Time')
+    plt.xlabel('Next days')
+    plt.ylabel('Price (USD)')
+    plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'${int(x):,}'))
+    # Formatting the x-axis
+    plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
     min_price = results['Predicted Price'].min()
     max_price = results['Predicted Price'].max()
@@ -96,7 +103,7 @@ def plot_predictions(results, days, file_path):
     plt.ylim(min_price - padding, max_price + padding)
 
     plt.legend()
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.savefig(file_path)
     plt.close()
@@ -136,9 +143,6 @@ def get_prediction(start_date, range_dates=15, bedrooms=2, bathrooms=2, property
     with torch.no_grad():
         _, forecast = model(model_input)
     
-    # Convert the forecast back to the original scale
-    print(forecast)
-    
     # Create a DataFrame with both forecasts
     forecast_dates = pd.date_range(start=start_date, periods=30)
     forecast_df = pd.DataFrame({
@@ -151,17 +155,17 @@ def get_prediction(start_date, range_dates=15, bedrooms=2, bathrooms=2, property
 
     return forecast_df
 
-# # Example usage
+# Example usage
 # start_date = "2023-08-01"  # Replace with your desired start date
 # range_dates = 15           # Replace with the desired range in days (up to 30)
 # bedrooms = 3
 # bathrooms = 2
 # forecast_df = get_prediction(start_date, range_dates, bedrooms, bathrooms, 'CONDO')
-# plot_predictions(forecast_df, range_dates, 'forecast.png')
+# plot_predictions(forecast_df, 'forecast.png')
 # sys.exit()
 
-@app.post("/n-beats-forecast")
-def api():
+# @app.post("/n-beats-forecast")
+def nb_api():
     data = request.get_json()
     
     if not data:
@@ -184,12 +188,12 @@ def api():
     file_path = os.path.join(output_dir, file_name)
 
     forecast_df = get_prediction(start_date, range_days, bedrooms, bathrooms, property_type)
-    plot_predictions(forecast_df, range_days, file_path)
+    plot_predictions(forecast_df, file_path)
     
     if os.path.isfile(file_path):
         return send_from_directory(output_dir, file_name, mimetype='image/png')
     else:
         return jsonify({'error': 'Image not produced'}), 500
 
-if __name__ == '__main__':
-   app.run()
+# if __name__ == '__main__':
+#    app.run()
